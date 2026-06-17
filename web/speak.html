@@ -1,0 +1,231 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Talk to Tgo</title>
+<link rel="icon" href="/favicon.png"/>
+<style>
+:root{--acc:#38bdf8;--ok:#34d399;--tx:#e7eef7;--mut:#7c8aa0;--line:#1b2740;--pause:#fbbf24}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;color:var(--tx);
+ background:radial-gradient(900px 600px at 50% -10%,#15263f,#0a0e16 60%) fixed;min-height:100vh;
+ display:flex;flex-direction:column;align-items:center;
+ padding:calc(18px + env(safe-area-inset-top)) 16px calc(18px + env(safe-area-inset-bottom))}
+header{width:100%;max-width:560px;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+header img{width:30px;height:30px;border-radius:8px}
+header h1{font-size:16px;margin:0;font-weight:700;flex:1}
+.gear,.back{background:#0e1626;border:1px solid var(--line);color:var(--tx);border-radius:10px;
+ padding:7px 11px;font-size:13px;cursor:pointer;text-decoration:none}
+.orb{width:170px;height:170px;border-radius:50%;margin:26px 0 14px;
+ background:radial-gradient(circle at 50% 35%,#1b3a55,#0c1a2a);border:2px solid #1d3350;
+ display:flex;align-items:center;justify-content:center;font-size:54px;transition:.25s;
+ box-shadow:0 0 0 0 rgba(56,189,248,.4)}
+.orb.listen{border-color:var(--ok);animation:pulse 1.4s infinite}
+.orb.think{border-color:var(--pause)}
+.orb.speak{border-color:var(--acc);animation:pulse .8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(56,189,248,.35)}70%{box-shadow:0 0 0 22px rgba(56,189,248,0)}100%{box-shadow:0 0 0 0 rgba(56,189,248,0)}}
+.status{color:var(--mut);font-size:13px;min-height:18px;margin-bottom:14px}
+.big{font-size:17px;font-weight:700;padding:15px 30px;border-radius:16px;border:none;cursor:pointer;
+ background:linear-gradient(180deg,#2b9fd4,#1f7fb0);color:#fff;box-shadow:0 12px 30px -12px rgba(56,189,248,.6)}
+.big.stop{background:linear-gradient(180deg,#d24b4b,#b03333)}
+.log{width:100%;max-width:560px;margin-top:22px}
+.row{display:flex;margin:8px 0}.row.me{justify-content:flex-end}
+.bub{max-width:80%;padding:9px 13px;border-radius:14px;font-size:14px;white-space:pre-wrap}
+.me .bub{background:#1e3a52;border-bottom-right-radius:4px}
+.tgo .bub{background:#10202f;border:1px solid var(--line);border-bottom-left-radius:4px}
+.who{font-size:10px;color:var(--mut);margin:0 4px 2px}
+/* settings overlay */
+.ov{position:fixed;inset:0;background:rgba(6,10,16,.86);backdrop-filter:blur(8px);display:none;
+ align-items:center;justify-content:center;padding:18px;z-index:30}
+.ov.show{display:flex}
+.card{background:linear-gradient(180deg,#121a2b,#0d1422);border:1px solid var(--line);border-radius:18px;
+ padding:18px;width:100%;max-width:460px;max-height:88vh;overflow:auto}
+.card h2{font-size:15px;margin:0 0 10px}
+label{display:block;font-size:12px;color:var(--mut);margin:11px 0 4px}
+select,input,textarea{width:100%;background:#0c1422;border:1px solid var(--line);color:var(--tx);
+ border-radius:10px;padding:9px;font-size:14px}
+select option{background:#0c1422;color:var(--tx)}
+.save{margin-top:14px;width:100%;background:linear-gradient(180deg,#2b9fd4,#1f7fb0);color:#fff;border:none;
+ border-radius:11px;padding:11px;font-weight:700;cursor:pointer}
+</style></head><body>
+<header>
+  <img src="/logo.png" alt=""/>
+  <h1>Talk to Tgo</h1>
+  <a class="back" href="/">← dashboard</a>
+  <button class="gear" onclick="openCfg()">⚙️</button>
+</header>
+<div class="orb" id="orb">🎙️</div>
+<div class="status" id="status">Pick a mode, tap Start, then talk. Say “thank you” / “I’m done” to end.</div>
+<div id="meterWrap" style="width:100%;max-width:300px;height:10px;background:#0e1626;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:10px;display:none"><div id="meter" style="height:100%;width:0;background:linear-gradient(90deg,#34d399,#fbbf24,#f87171);transition:width .06s"></div></div>
+<div style="margin-bottom:12px"><button class="gear" id="modeBtn" onclick="toggleMode()">🙌 Hands-free</button></div>
+<button class="big" id="btn" onclick="toggle()">▶ Start conversation</button>
+<button class="big" id="talk" style="display:none;margin-top:14px;background:linear-gradient(180deg,#34d399,#1f9d6b)">🎤 Hold to talk</button>
+<div class="log" id="log"></div>
+
+<div class="ov" id="ov"><div class="card">
+  <h2>Tgo voice settings</h2>
+  <label>Language</label><select id="c-lang"><option value="both">English + فارسی</option><option value="en">English</option><option value="fa">فارسی</option></select>
+  <label>Voice</label><select id="c-gender"><option value="female">woman</option><option value="male">man</option></select>
+  <label>Speech engine (STT / TTS)</label><select id="c-engine"><option value="azure">Azure (cloud)</option><option value="google">Google (cloud)</option><option value="local">Local (on this Mac)</option></select>
+  <label>Local assistant active hours (e.g. 17:30-01:00, comma for several)</label><input id="c-win" placeholder="17:30-01:00"/>
+  <label>Wake words (one per line)</label><textarea id="c-wake" style="height:54px"></textarea>
+  <label>Assistant names (one per line)</label><textarea id="c-names" style="height:48px"></textarea>
+  <button class="save" onclick="saveCfg()">Save</button>
+  <button class="save" style="background:#1a2436;margin-top:8px" onclick="closeCfg()">Close</button>
+</div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+let running=false, stream, ac, analyser, rec, chunks=[], history=[], speaking=false, thinking=false, aborter=null, audioEl=new Audio();
+let lang='both', gender='female', mode=localStorage.getItem('tgo_mode')||'handsfree';
+$('#modeBtn').textContent = mode==='handsfree'?'🙌 Hands-free':'👆 Tap to talk';
+function toggleMode(){ mode=mode==='handsfree'?'tap':'handsfree'; localStorage.setItem('tgo_mode',mode);
+  $('#modeBtn').textContent = mode==='handsfree'?'🙌 Hands-free':'👆 Tap to talk';
+  if(running){ audioEl.pause(); speaking=false; nextTurn(); } }
+function nextTurn(){ // after a turn: hands-free auto-listens; tap waits for the button
+  if(!running) return;
+  if(mode==='handsfree'){ $('#talk').style.display='none'; listen(); }
+  else { $('#talk').style.display=''; setOrb('','Hold the green button to talk.'); }
+}
+// tap-to-talk: hold to record, release to send (works without any handsfree device)
+function bindTalk(){
+  const t=$('#talk');
+  const down=e=>{ e.preventDefault(); if(!running||speaking) {audioEl.pause();speaking=false;} startTap(); };
+  const up=e=>{ e.preventDefault(); stopTap(); };
+  t.onpointerdown=down; t.onpointerup=up; t.onpointerleave=up; t.ontouchend=up;
+}
+function startTap(){ if(!running) return; chunks=[]; rec=new MediaRecorder(stream,{mimeType:pickMime()});
+  rec.ondataavailable=e=>chunks.push(e.data); rec.onstop=()=>send(new Blob(chunks,{type:rec.mimeType}));
+  rec.start(); setOrb('listen','Listening… (release to send)'); $('#talk').textContent='● recording — release to send'; }
+function stopTap(){ try{ if(rec&&rec.state==='recording') rec.stop(); }catch(e){} $('#talk').textContent='🎤 Hold to talk'; }
+function setOrb(c,txt){$('#orb').className='orb'+(c?' '+c:'');if(txt)$('#status').textContent=txt;}
+function add(role,text){const r=document.createElement('div');r.className='row '+(role==='me'?'me':'tgo');
+  r.innerHTML='<div><div class="who">'+(role==='me'?'you':'Tgo')+'</div><div class="bub">'+text.replace(/</g,'&lt;')+'</div></div>';
+  $('#log').appendChild(r);window.scrollTo(0,document.body.scrollHeight);}
+
+async function toggle(){ if(running){stop();return;} await start(); }
+async function start(){
+  try{ stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}); }
+  catch(e){ $('#status').textContent='Mic permission needed.'; return; }
+  // load current voice settings
+  try{const v=await fetch('/api/voicecfg',{credentials:'include'}).then(r=>r.json());lang=v.language||'both';gender=v.voiceGender||'female';}catch(e){}
+  ac=new (window.AudioContext||window.webkitAudioContext)();
+  const src=ac.createMediaStreamSource(stream); analyser=ac.createAnalyser(); analyser.fftSize=1024; src.connect(analyser);
+  running=true; $('#btn').textContent='⏹ Stop'; $('#btn').classList.add('stop');
+  unlockAudio(); // iOS/Android: unlock playback WITHIN this Start tap so later replies can autoplay
+  $('#meterWrap').style.display=''; meterLoop();
+  bindTalk();
+  setOrb('listen','Calibrating to the room…'); setTimeout(nextTurn,800); // learn the noise floor first
+}
+// Mobile browsers block audio that isn't started by a user gesture. Playing (then pausing) a tiny
+// silent clip inside the Start tap "unlocks" the element so every later TTS reply plays. Also
+// resumes the AudioContext (iOS suspends it). This is the fix for "TTS works a couple of times".
+const SILENT='data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+let audioUnlocked=false;
+function unlockAudio(){
+  try{ if(ac&&ac.state==='suspended') ac.resume(); }catch(e){}
+  try{ audioEl.src=SILENT; const p=audioEl.play(); if(p&&p.then) p.then(()=>{audioUnlocked=true;}).catch(()=>{}); }catch(e){}
+}
+// Adaptive noise floor: continuously learn the room's ambient level so speech is detected
+// RELATIVE to the background (works in a quiet room AND a noisy car), not a fixed threshold.
+let noiseFloor=0.015, capturing=false, bargeHi=0;
+function meterLoop(){ if(!running){$('#meter').style.width='0';return;}
+  const r=rms(); $('#meter').style.width=Math.min(100, r*900)+'%';
+  if(!speaking && !capturing && !thinking) noiseFloor = noiseFloor*0.96 + r*0.04; // learn ambient only when truly idle
+  requestAnimationFrame(meterLoop);
+}
+function speechThresh(){ return Math.max(0.028, noiseFloor*2.4 + 0.013); } // your voice over the room
+function bargeThresh(){ return Math.max(0.05, noiseFloor*2.6 + 0.028); }   // clearly over Tgo's echo
+function stop(){ running=false; try{stream.getTracks().forEach(t=>t.stop());ac&&ac.close();}catch(e){} audioEl.pause();
+  $('#btn').textContent='▶ Start conversation'; $('#btn').classList.remove('stop'); $('#talk').style.display='none'; setOrb('','Stopped.'); }
+
+function rms(){ const a=new Uint8Array(analyser.fftSize); analyser.getByteTimeDomainData(a);
+  let s=0; for(const x of a){const v=(x-128)/128; s+=v*v;} return Math.sqrt(s/a.length); }
+
+// listen for an utterance (adaptive VAD): wait for speech that's clearly above the room's noise
+// floor, record until ~1.1s of (relative) silence, then send. Needs 2 consecutive loud frames to
+// start (ignores brief noise spikes in a noisy place).
+function listen(immediate){
+  if(!running||mode!=='handsfree') return; setOrb('listen','Listening… just talk');
+  chunks=[]; rec=new MediaRecorder(stream,{mimeType:pickMime()}); rec.ondataavailable=e=>chunks.push(e.data);
+  let started=!!immediate, lastVoice=Date.now(), hi=0;
+  if(immediate){ capturing=true; rec.start(); } // you were already talking (barge-in) → capture from NOW, don't drop your words
+  const tick=()=>{
+    if(!running||mode!=='handsfree') return;
+    const r=rms();
+    if(r>speechThresh()){ hi++; lastVoice=Date.now(); if(!started&&hi>=2){started=true;capturing=true;rec.start();} }
+    else { hi=0; }
+    if(started && Date.now()-lastVoice>1100){ try{if(rec.state==='recording')rec.stop();}catch(e){} return; } // ~1.1s below speech level = end
+    requestAnimationFrame(tick);
+  };
+  rec.onstop=()=>{ capturing=false; const blob=new Blob(chunks,{type:rec.mimeType}); send(blob); };
+  requestAnimationFrame(tick);
+}
+
+// barge-in: while Tgo speaks, watch the mic; if YOU talk over it (clearly above its echo, for a
+// few frames so the echo itself doesn't trigger), stop Tgo immediately and listen to you.
+// Unified interrupt watcher: runs while Tgo is SPEAKING *or* THINKING. If you start talking, stop Tgo
+// (cut the audio / abort the in-flight request) and listen to YOU immediately — capturing from the first
+// word. While speaking, use the higher barge threshold (ignore Tgo's own echo); while thinking (no audio
+// playing), use the normal speech threshold so a quiet "wait, actually…" still registers.
+function watchInterrupt(){
+  if(!running || (!speaking && !thinking)) return;
+  const thresh = speaking ? bargeThresh() : speechThresh();
+  if(rms()>thresh){ bargeHi++; if(bargeHi>=3){ bargeHi=0;
+    if(speaking){ audioEl.pause(); speaking=false; }
+    if(thinking){ thinking=false; try{ aborter && aborter.abort(); }catch(e){} } // drop the in-flight answer
+    capturing=false; listen(true); return; } }
+  else { bargeHi=0; }
+  requestAnimationFrame(watchInterrupt);
+}
+
+async function send(blob){
+  setOrb('think','Thinking… (talk any time to interrupt)');
+  thinking=true; aborter=new AbortController();
+  if(mode==='handsfree') requestAnimationFrame(watchInterrupt); // KEEP listening while thinking — you can cut in
+  const fd=new FormData(); fd.append('audio',blob,'a.webm'); fd.append('language',lang); fd.append('voiceGender',gender);
+  fd.append('history',JSON.stringify(history.slice(-6)));
+  try{
+    const d=await fetch('/api/voice/turn',{method:'POST',credentials:'include',body:fd,signal:aborter.signal}).then(r=>r.json());
+    thinking=false;
+    if(d.userText){ add('me',d.userText); history.push({r:'User',t:d.userText}); }
+    if(d.answer){ add('tgo',d.answer); history.push({r:'Tgo',t:d.answer}); }
+    if(/thank you|i'?m done|done with you|that'?s all|goodbye|ممنون|مرسی|خداحافظ|تمام|کافیه/i.test(d.userText||'')){
+      running=false; $('#talk').style.display='none';
+      if(d.audioB64){ speaking=true; audioEl.src='data:audio/wav;base64,'+d.audioB64; audioEl.play().catch(()=>{}); }
+      setOrb('','Talk soon — tap start to chat again.');
+      $('#btn').textContent='▶ Start conversation'; $('#btn').classList.remove('stop'); return;
+    }
+    if(d.audioB64){ await play(d.audioB64); } else { nextTurn(); }
+  }catch(e){ thinking=false; if(e&&e.name==='AbortError') return; // you interrupted → listen() already running
+    setOrb('','Hmm, connection issue.'); if(running) setTimeout(nextTurn,800); }
+}
+function play(b64){ return new Promise(res=>{ speaking=true; setOrb('speak','Tgo is speaking…');
+  try{ if(ac&&ac.state==='suspended') ac.resume(); }catch(e){}
+  audioEl.src='data:audio/wav;base64,'+b64;
+  audioEl.onended=()=>{speaking=false;res(); nextTurn();};
+  const p=audioEl.play();
+  if(p&&p.catch) p.catch(()=>{ // still blocked → show a tap-to-hear button so the reply isn't lost
+    speaking=false; setOrb('','🔊 Tap to hear Tgo'); showHear(b64,res);
+  });
+  if(mode==='handsfree') requestAnimationFrame(watchInterrupt); }); }
+function showHear(b64,res){ let b=$('#hearBtn'); if(!b){ b=document.createElement('button'); b.id='hearBtn';
+  b.className='big'; b.style.marginTop='12px'; document.body.insertBefore(b,$('#log')); }
+  b.textContent='🔊 Tap to hear Tgo'; b.style.display='';
+  b.onclick=()=>{ b.style.display='none'; audioEl.src='data:audio/wav;base64,'+b64;
+    audioEl.onended=()=>{speaking=false;res();nextTurn();}; audioEl.play().catch(()=>{res();nextTurn();}); }; }
+function pickMime(){ for(const m of ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg']) if(MediaRecorder.isTypeSupported(m)) return m; return ''; }
+
+// ── settings overlay ──
+async function openCfg(){ const v=await fetch('/api/voicecfg',{credentials:'include'}).then(r=>r.json()).catch(()=>({}));
+  $('#c-lang').value=v.language||'both'; $('#c-gender').value=v.voiceGender||'female'; $('#c-engine').value=v.sttEngine||'azure';
+  $('#c-win').value=(v.activeWindows||[{from:'17:30',to:'01:00'}]).map(w=>w.from+'-'+w.to).join(', ');
+  $('#c-wake').value=(v.wakeWords||[]).join('\n'); $('#c-names').value=(v.agentNames||[]).join('\n');
+  $('#ov').classList.add('show'); }
+function closeCfg(){ $('#ov').classList.remove('show'); }
+async function saveCfg(){
+  const body={language:$('#c-lang').value,voiceGender:$('#c-gender').value,sttEngine:$('#c-engine').value,
+    ttsEngine:$('#c-engine').value,activeWindows:$('#c-win').value,wakeWords:$('#c-wake').value,agentNames:$('#c-names').value};
+  await fetch('/api/voicecfg',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  lang=body.language; gender=body.voiceGender; closeCfg();
+}
+</script></body></html>

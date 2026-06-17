@@ -1,0 +1,1758 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>Claudworker · Agent Control</title>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="icon" href="/favicon.png"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<meta name="theme-color" content="#0a0e16"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Claudworker Agents"/>
+<style>
+:root{--bg:#0a0e16;--panel:#121a2b;--panel2:#0e1524;--line:#23304a;--tx:#eef2f8;--mut:#8b9bb4;
+ --ok:#34d399;--run:#38bdf8;--warn:#fbbf24;--orange:#fb923c;--err:#f87171;--pause:#c4b5fd;--acc:#2dd4bf;--accs:#22d3ee;
+ --shadow:0 12px 30px -16px rgba(0,0,0,.6)}
+:root.light{--bg:#eef2f8;--panel:#ffffff;--panel2:#f3f6fb;--line:#d6deea;--tx:#16203a;--mut:#5a6a86;
+ --ok:#059669;--run:#0284c7;--warn:#d97706;--orange:#ea580c;--err:#dc2626;--pause:#7c3aed;--acc:#0d9488;--accs:#0891b2;
+ --shadow:0 10px 26px -18px rgba(20,40,80,.35)}
+*{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
+body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;color:var(--tx);
+ background:radial-gradient(1100px 600px at 78% -12%,#15263f 0,#0a0e16 58%) fixed;padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#243248;border-radius:9px}
+a{color:var(--accs);text-decoration:none}
+.hidden{display:none!important}
+/* header */
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+ padding:calc(12px + env(safe-area-inset-top)) calc(18px + env(safe-area-inset-right)) 12px calc(18px + env(safe-area-inset-left));
+ position:sticky;top:0;z-index:30;background:rgba(10,14,22,.82);backdrop-filter:saturate(140%) blur(12px);border-bottom:1px solid var(--line)}
+header .logo{width:26px;height:26px;border-radius:8px}
+header h1{font-size:15px;margin:0;font-weight:700;letter-spacing:.2px}
+.spacer{flex:1}
+.chip{font-size:12px;color:var(--mut);border:1px solid var(--line);border-radius:99px;padding:4px 11px;background:#0e1626}
+.chip b{color:var(--run);font-weight:700}
+.btn{background:#1b2640;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:7px 11px;cursor:pointer;font-size:12.5px;font-weight:500;transition:.15s}
+.btn:hover{border-color:#3a4d72;transform:translateY(-1px)}.btn:active{transform:none}
+.btn.on{background:linear-gradient(180deg,#103024,#0c241b);border-color:#1f6b4d;color:#6ee7b7}
+.btn.p{background:linear-gradient(180deg,#173050,#102541);border-color:#2b517f;color:#bfdbff}
+.btn.danger{background:#321722;border-color:#6e2a3b;color:#fca5a5}
+.gz{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--mut)}
+.gb{width:84px;height:7px;background:#1b2740;border-radius:99px;overflow:hidden;display:inline-block;vertical-align:middle}
+.gb>i{display:block;height:100%;background:linear-gradient(90deg,#34d399,#fbbf24,#f87171)}
+/* toolbar */
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 18px;border-bottom:1px solid var(--line);background:#0b1220}
+.tg{display:flex;gap:5px;align-items:center;background:#0e1626;border:1px solid var(--line);border-radius:12px;padding:4px}
+.tg>.btn{border:none;background:transparent;padding:6px 9px}.tg>.btn.sel{background:#1b2640;border:1px solid #2b3c5c}
+.tg .lab{font-size:11px;color:var(--mut);padding:0 6px}
+input.num{width:50px;background:#0c1422;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:5px;font-size:12px;text-align:center}
+select.sel{background:#0c1422;border:1px solid var(--line);color:var(--tx);border-radius:9px;padding:6px;font-size:12px}
+select option, select.sel option{background:#121a2b;color:#eef2f8}
+/* build bar */
+.buildbar{padding:9px 18px;border-bottom:1px solid var(--line);background:#0b1220}
+.brow{display:flex;align-items:center;gap:11px;margin:4px 0;font-size:12.5px}
+.brow .nm{min-width:130px;font-weight:600}.bb{flex:1;height:9px;background:#16203400;background:#162034;border-radius:99px;overflow:hidden}
+.bb>i{display:block;height:100%;background:linear-gradient(90deg,#fbbf24,#34d399);transition:width .5s}
+/* layout */
+.wrap{max-width:none;margin:0 auto;padding:16px clamp(14px,2vw,40px)}
+.layout{display:flex;gap:18px;align-items:flex-start}
+#main{flex:1;min-width:0}#aside{width:clamp(300px,22vw,400px);flex-shrink:0}
+@media(max-width:1000px){.layout{display:block}#aside{display:none}}
+h2.sec{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.7px;margin:18px 0 9px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:13px}
+/* cards */
+.card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:15px;padding:14px;
+ cursor:pointer;transition:.15s;box-shadow:0 1px 0 rgba(255,255,255,.02) inset}
+.card:hover{border-color:#34466b;transform:translateY(-2px);box-shadow:0 10px 30px -16px rgba(0,0,0,.6)}
+.card h3{margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:7px}
+.tagk{font-size:10px;color:var(--mut);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-weight:600}
+.tags{font-size:10px;color:#0b1220;background:var(--acc);border-radius:6px;padding:1px 7px;font-weight:800}
+.bdg{font-size:10px;text-transform:uppercase;letter-spacing:.5px;padding:2px 8px;border-radius:99px;border:1px solid;font-weight:700}
+.s-running{color:var(--run);border-color:#1d4e63;background:#08283a}.s-idle{color:var(--mut);border-color:#2a3650}
+.s-paused{color:var(--pause);border-color:#3a2f55}.s-done{color:var(--ok);border-color:#1c4a30;background:#082017}.s-error{color:var(--err);border-color:#5a2330;background:#2a1117}
+.pbar{height:9px;background:#162034;border-radius:99px;overflow:hidden;margin:10px 0 6px}
+.pbar>i{display:block;height:100%;background:linear-gradient(90deg,var(--run),var(--acc));transition:width .5s;border-radius:99px}
+.pbar.done>i{background:linear-gradient(90deg,#10b981,#34d399)}
+.lines{font-size:12.5px;color:var(--mut);min-height:30px}.lines .d{color:#bbf7d0}.lines .d::before{content:"✓ ";color:var(--ok)}
+.lines .t::before{content:"→ ";color:var(--run)}
+.meta{display:flex;gap:10px;font-size:11px;color:var(--mut);margin-top:8px;flex-wrap:wrap}
+.acts{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}.acts .btn{padding:5px 9px}
+.sch{display:flex;gap:5px;margin-top:8px}.sch select,.sch input{background:#0c1422;border:1px solid var(--line);color:var(--tx);border-radius:8px;padding:4px 6px;font-size:11px;width:74px}
+.subline{display:flex;justify-content:space-between;font-size:11.5px;color:var(--mut);padding:3px 0}.subline b{color:#cbd5e1;font-weight:600}
+/* panels */
+.panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:15px;padding:14px;margin-bottom:15px}
+.panel h2{font-size:12px;margin:0 0 11px;text-transform:uppercase;letter-spacing:.7px;color:var(--mut);font-weight:700}
+.rowi{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;padding:7px 0;border-bottom:1px solid #18233a}
+.rowi:last-child{border:none}.free{color:var(--ok)}.busy{color:var(--warn)}.off{color:var(--err)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.glance{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.gchip{font-size:12px;border:1px solid var(--line);border-radius:9px;padding:5px 11px;background:var(--panel);color:var(--mut)}
+.gchip b{color:var(--tx)}
+/* explicit grid = real side-by-side columns that resize with the screen (auto-fit stretches columns to fill the width and reflows the count as the window changes); min-width:0 + overflow:hidden let each column shrink past its long text */
+/* Columns never narrower than 240px (min(100%,…) so they shrink to 1-up on a phone instead of cramming
+   3 tiny overlapping columns). auto-fit then gives 1 col on a phone, 2 on a wide phone, more on desktop. */
+.tcols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:14px;align-items:start}
+.tcol{min-width:0;overflow:hidden;background:var(--panel2);border:1px solid var(--line);border-radius:13px;padding:10px}
+.tcol *{min-width:0;max-width:100%}
+/* ANTI-OVERLAP (all widths): names/keys/summaries CLIP with an ellipsis instead of spilling over their
+   neighbours. min-width:0 alone (above) only lets the box shrink — without overflow clipping the TEXT
+   still overflowed and overlapped the next element. Header/card rows also wrap as a last resort. */
+.tcolh>div{flex-wrap:wrap;row-gap:3px}
+.tcolh b,.tcr b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tcr{flex-wrap:wrap;row-gap:2px}
+.tcard .mini{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Phone: shrink the team columns' fonts/bars/buttons. Column COUNT is left to auto-fit (base rule) so a
+   narrow phone gets 1 wide column (no cramming) and a wider phone gets 2 — never 3 tiny overlapping ones. */
+@media(max-width:600px){
+  .tcols{gap:8px}
+  .tcol{padding:7px;border-radius:10px}
+  .tcolh{padding-bottom:5px}
+  .tcolh b{font-size:11.5px}
+  .tcard{padding:5px 6px;margin-bottom:5px;border-radius:7px}
+  .tcr{gap:4px}
+  .tcol h3{font-size:12px}
+  .tcol .mini,.tcol .free,.tcol .subline,.tcol .tagk{font-size:9.5px!important}
+  .tcol .btn{font-size:9px!important;padding:2px 5px!important}
+  .tcol .pbar{height:5px!important;margin:3px 0 2px!important}
+  .tcol .gb{width:46px!important;height:5px!important}
+  .glance{gap:5px;margin-bottom:9px}
+  .gchip{font-size:10px;padding:3px 7px;border-radius:7px}
+  h2.sec{font-size:14px}
+  /* STOP OVERLAP: let the header/card rows wrap, and let the long name shrink with an ellipsis
+     instead of pushing the model tag / % / buttons on top of each other in a narrow column. */
+  .tcol .tcolh>div{flex-wrap:wrap;row-gap:3px}
+  .tcol .tcolh b,.tcol .tcr b{min-width:0;flex-shrink:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tcol .tcr{flex-wrap:wrap;row-gap:3px}
+  .tcol .acts{flex-wrap:wrap;row-gap:4px}
+  .tcol .tagk,.tcol .free,.tcol .tags{white-space:nowrap;flex:none}
+  .tcol .pbar{flex-basis:100%}              /* progress bar always on its own full-width line */
+  .tcol .tcr .btn{flex:none}                /* per-agent run/pause buttons keep their size, wrap as a unit */
+  /* card headers (team page agents, detail) + section headers: wrap instead of overlapping */
+  .card h3{flex-wrap:wrap;row-gap:3px}
+  .card{padding:11px}
+  .acts{gap:5px}
+  h2{font-size:16px}
+  .sec h2,h2.sec{word-break:break-word}
+}
+@media(max-width:380px){.tcols{grid-template-columns:1fr}}
+.tcolh{border-bottom:1px solid var(--line);padding-bottom:7px}
+.tcard{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 9px;margin-bottom:7px;cursor:pointer;transition:.12s}
+.tcard:hover{border-color:var(--acc)}
+.tcr{display:flex;align-items:center;gap:6px}
+.tdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dtbl{width:100%;border-collapse:collapse;font-size:12.5px}
+.dtbl th{text-align:left;color:var(--mut);font-weight:600;font-size:11px;padding:6px 10px 6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+.dtbl td{padding:8px 10px 8px 0;border-bottom:1px solid #18233a;vertical-align:top}
+.dtbl tr:last-child td{border:none}
+.mini{font-size:12.5px;color:var(--mut)}.mini b{color:var(--tx);font-weight:700}
+.empty{color:var(--mut);font-size:12px;padding:8px 0}
+.path{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.pc{flex:1;min-width:220px;background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:13px;padding:11px 13px}
+.pc .lab{font-size:11px;color:var(--mut);display:flex;justify-content:space-between;margin-bottom:6px}.pc .lab b{color:var(--tx)}
+.pc i{display:block;height:9px;border-radius:99px;background:linear-gradient(90deg,var(--acc),#34d399);transition:width .6s}
+.pc .track{height:9px;background:#162034;border-radius:99px;overflow:hidden}
+/* tickets/chat */
+.tline{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12.5px;padding:8px 0;border-bottom:1px solid #18233a}
+.tk{display:flex;gap:7px;margin:8px 0;overflow-x:auto;flex-wrap:nowrap;max-width:100%;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tk::-webkit-scrollbar{display:none}
+.tk>*{flex:0 0 auto}
+.chat{display:flex;flex-direction:column;height:260px}
+.clog{flex:1;overflow:auto;background:#0a1120;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:12.5px}
+.m{margin:7px 0}.m.me{color:#cbd5e1}.m.ag{color:#a7f3d0}.m .who{color:var(--mut);font-size:10px;display:block;margin-bottom:2px}
+.cin{display:flex;gap:6px;margin-top:8px}.cin select{width:120px}.cin input{flex:1;background:#0c1422;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:9px}
+.mic{background:#321722;border-color:#6e2a3b}.mic.rec{animation:pulse 1s infinite}@keyframes pulse{50%{opacity:.45}}
+.fin{width:100%;background:#0c1422;border:1px solid var(--line);color:var(--tx);border-radius:10px;padding:10px;margin:6px 0;font-size:14px}
+.back{cursor:pointer;color:var(--acc);font-size:13px;font-weight:600;display:inline-flex;gap:4px;margin-bottom:10px}
+#busy{position:fixed;inset:0;background:rgba(5,8,14,.55);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;flex-direction:column;gap:14px;z-index:80;color:var(--tx);font-size:14px}
+#busy.show{display:flex}
+.spin{width:44px;height:44px;border:4px solid #22304a;border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* tab bar */
+.tabbar{position:fixed;bottom:0;left:0;right:0;display:flex;gap:4px;justify-content:space-around;
+ background:rgba(13,20,34,.9);backdrop-filter:saturate(160%) blur(18px);border-top:1px solid var(--line);
+ padding:7px max(8px,env(safe-area-inset-left)) calc(7px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-right));
+ z-index:40;box-shadow:0 -10px 34px -14px rgba(0,0,0,.7)}
+.tabbar a{flex:1;max-width:96px;text-align:center;padding:7px 4px;color:var(--mut);font-size:10px;font-weight:600;letter-spacing:.2px;
+ cursor:pointer;transition:.18s;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabbar a .ic{font-size:20px;line-height:1;transition:.18s;filter:grayscale(.3) opacity(.8)}
+.tabbar a.act{color:var(--acc);background:linear-gradient(180deg,rgba(56,189,248,.18),rgba(56,189,248,.03))}
+.tabbar a.act .ic{transform:translateY(-1px) scale(1.12);filter:none}
+.tabbar a:active{transform:scale(.9)}
+/* floating Speak (Tgo voice) button — always one tap away, esp. in the car */
+.fab{position:fixed;right:16px;bottom:calc(78px + env(safe-area-inset-bottom));z-index:45;
+ display:flex;align-items:center;gap:8px;height:54px;padding:0 20px;border-radius:30px;
+ background:linear-gradient(180deg,#2b9fd4,#1576a8);color:#fff;font-weight:700;font-size:15px;
+ text-decoration:none;box-shadow:0 14px 34px -10px rgba(56,189,248,.7);border:1px solid #5cc0ec}
+.fab:active{transform:scale(.94)}.fab .mic{font-size:22px}
+/* saved/loading feedback */
+#cwtoast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(12px);background:#0d1a12;border:1px solid #1f5135;color:#a7f3d0;padding:9px 16px;border-radius:11px;font-size:13px;font-weight:600;z-index:80;opacity:0;pointer-events:none;transition:.18s;box-shadow:0 12px 30px -12px rgba(0,0,0,.6)}
+#cwtoast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#cwtoast.err{background:#1f0d0d;border-color:#5a2020;color:#fca5a5}
+.saving{outline:2px solid var(--warn)!important;opacity:.7}
+.saved{outline:2px solid var(--ok)!important}
+button[data-busy]{opacity:.8}
+/* login */
+.login{position:fixed;inset:0;background:radial-gradient(900px 500px at 50% 0,#15263f,#0a0e16);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px}
+.lbox{background:linear-gradient(180deg,#121a2b,#0d1422);border:1px solid var(--line);border-radius:20px;padding:30px;width:340px;text-align:center;box-shadow:0 30px 80px -30px rgba(0,0,0,.7)}
+.lbox img{width:72px;height:72px;border-radius:18px;margin-bottom:12px}
+.lbox input{width:100%;background:#0c1422;border:1px solid var(--line);color:var(--tx);border-radius:11px;padding:12px;margin:7px 0;font-size:14px}
+.lbox .btn{width:100%;margin-top:10px;padding:13px;font-size:14px;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="login" id="login">
+  <div class="lbox">
+    <img src="/logo.png" alt=""/>
+    <h1 style="margin:0 0 2px;font-size:18px">Claudworker Agent Control</h1>
+    <div class="empty" id="lerr">sign in</div>
+    <input id="lu" placeholder="username" autocomplete="username"/>
+    <input id="lp" type="password" placeholder="password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="btn p" onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+<header>
+  <img class="logo" src="/logo.png" alt=""/>
+  <h1>Claudworker · Agents</h1>
+  <span class="chip">working <b id="wn">0</b></span>
+  <span class="chip" id="cibadge" style="display:none;cursor:pointer" title="automated test status — tap to view" onclick="goTab('tasks')"></span>
+  <span class="chip" id="clock">●</span>
+  <div class="spacer"></div>
+  <span class="gz" id="banner">–</span>
+  <button class="btn p" title="Pause: stop starting NEW work, but let agents already running FINISH their jobs first (graceful)." onclick="api('/api/pause',{name:'all'})">⏸ pause (finish jobs)</button>
+  <button class="btn p" title="Pause FAST (safe): stop new work + stop running agents immediately. Safe — killed agents resume exactly where they left off (session-resume), so no work is lost." onclick="api('/api/pausefast',{})">⏸ pause (fast)</button>
+  <button class="btn" id="bPWI" title="Pause when the whole session's work is finished: keep working through the ENTIRE queue, then pause once everything is drained (nothing running + no tickets left in any lane). Click again to cancel." onclick="var on=this.dataset.on==='1';api('/api/pausewhenidle',{on:(on?'false':'true')});">⏸ pause at session end</button>
+  <button class="btn p" title="Resume all (lift pause)." onclick="resumeAll()">▶ resume</button>
+  <button class="btn danger" title="Stop NOW: pause + immediately kill every running agent (work in progress is interrupted)." onclick="if(confirm('Stop now and KILL running agents?'))api('/api/stopall',{})">⏹ stop now (kill)</button>
+  <button class="btn" onclick="openV('__needs__')">🙋 Needs you</button>
+  <button class="btn" onclick="openV('__human__')">🧪 Human test</button>
+  <button class="btn" onclick="openV('__history__')">🕘 24h</button>
+  <button class="btn" onclick="refreshNow()" title="update">🔄</button>
+  <button class="btn" onclick="openV('__settings__')">⚙️</button>
+  <button class="btn" onclick="logout()">⎋</button>
+</header>
+
+<div class="toolbar">
+  <span class="lab" style="opacity:.7">⚙️ speed is set <b>per account</b> →</span>
+  <button class="btn" onclick="openV('__accounts__')">🔑 Accounts</button>
+  <select class="sel" id="bMode" title="Work now = run immediately (still gated + batched, so token-frugal). Scheduler = run on the timer." onchange="api('/api/boost',{on:this.value})"><option value="true">⚡ Work now</option><option value="false">🗓 Scheduler</option></select>
+  <select class="sel" id="bEff" disabled title="Effort is AUTOMATIC & locked: low for ops/polling, medium for deploy/test, high for engineering/review, max auto on live Sentry-critical work. Decided per agent+task to maximise quality at lowest tokens."><option value="">🔒 effort: auto</option></select>
+  <select class="sel" id="bView" onchange="setView(this.value)"><option value="grouped">view: grouped</option><option value="all">view: all</option></select>
+  <select class="sel" id="bScope" title="in view:all, show Done/Failed for TODAY only or ALL-time" onchange="setScope(this.value)"><option value="today">scope: today</option><option value="all">scope: all-time</option></select>
+  <span class="chip" title="Batch size: how many related tickets each agent does per run (one session, no re-reading). 0 = one task per run.">📦 batch <input id="bBatch" type="number" min="0" max="100" style="width:54px" onchange="api('/api/batch',{n:this.value})"/></span>
+  <span class="chip" title="Per-team queue: how many tickets the pump keeps queued for EACH team in stage-building, pulled from the backlog — so a team's queue never goes empty while it has tasks.">🗂️ queue/team <input id="bTQ" type="number" min="1" max="200" style="width:54px" onchange="api('/api/teamqueue',{n:this.value})"/></span>
+  <span class="chip" id="bCaps" title="run-at-once × sub-agents per account — auto from each account's speed">⚙️ —</span>
+  <button class="btn" id="themeBtn" onclick="toggleTheme()" title="light / dark" style="margin-left:auto">🌙</button>
+</div>
+
+<div class="buildbar hidden" id="buildbar"></div>
+
+<div class="wrap layout">
+  <div id="main"></div>
+  <div id="aside"></div>
+</div>
+</div>
+
+<a class="fab hidden" id="fab" href="/speak.html"><span class="mic">🎤</span> Speak</a>
+<div class="tabbar hidden" id="tabbar"></div>
+<datalist id="cappresets"><option value="15"></option><option value="30"></option><option value="45"></option><option value="60"></option><option value="75"></option><option value="95"></option></datalist>
+<div id="busy"><div class="spin"></div><span id="busytxt">working…</span></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>(s==null?'':(''+s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// minimal, safe Markdown → HTML so Tgo's chat replies render like a real .md file
+function mdRender(t){t=esc(t||'');
+  t=t.replace(/```([\s\S]*?)```/g,(m,c)=>'<pre style="background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;overflow-x:auto;margin:6px 0"><code>'+c.replace(/^\n/,'')+'</code></pre>');
+  t=t.replace(/`([^`]+)`/g,'<code style="background:var(--panel2);padding:1px 5px;border-radius:4px">$1</code>');
+  t=t.replace(/^#### (.*)$/gm,'<h4 style="margin:8px 0 3px">$1</h4>').replace(/^### (.*)$/gm,'<h4 style="margin:9px 0 4px">$1</h4>').replace(/^## (.*)$/gm,'<h3 style="margin:11px 0 5px">$1</h3>').replace(/^# (.*)$/gm,'<h3 style="margin:12px 0 6px">$1</h3>');
+  t=t.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/__([^_]+)__/g,'<b>$1</b>');
+  t=t.replace(/(^|[^*])\*([^*\n]+)\*/g,'$1<i>$2</i>');
+  t=t.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" style="color:#7dd3fc">$1</a>');
+  t=t.replace(/^\s*[\-\*] (.*)$/gm,'<div style="margin:1px 0 1px 8px">• $1</div>');
+  t=t.replace(/^\s*(\d+)\. (.*)$/gm,'<div style="margin:1px 0 1px 8px">$1. $2</div>');
+  t=t.replace(/\n/g,'<br>');
+  t=t.replace(/<pre([\s\S]*?)<\/pre>/g,m=>m.replace(/<br>/g,'\n'));
+  t=t.replace(/(<\/(?:h3|h4|div|pre)>)<br>/g,'$1');
+  return t;}
+// ---- theme (light / dark) ----
+function applyTheme(){const light=localStorage.getItem('cw_theme')==='light';document.documentElement.classList.toggle('light',light);const b=document.getElementById('themeBtn');if(b)b.textContent=light?'☀️':'🌙';}
+function toggleTheme(){localStorage.setItem('cw_theme',localStorage.getItem('cw_theme')==='light'?'dark':'light');applyTheme();}
+applyTheme();
+const sc=s=>({running:'s-running',idle:'s-idle',paused:'s-paused',done:'s-done',error:'s-error'}[s]||'s-idle');
+// Has the owner got an active text selection right now? (used to hold live re-renders so copying works)
+let _pendingRender=false;
+function hasSel(){try{const s=window.getSelection&&window.getSelection();return !!(s&&String(s).trim().length>0&&s.type==='Range');}catch(_){return false;}}
+function fmtMin(m){if(m==null||m<0)return'';if(m<60)return m+'m';
+  const h=Math.floor(m/60),mm=m%60;
+  if(h<24)return h+'h'+(mm?mm+'m':'');           // 5-hour window: 4h12m
+  const d=Math.floor(h/24),hh=h%24;return d+'d'+(hh?hh+'h':'')+(mm?mm+'m':''); // weekly: 3d5h36m
+}
+// Usage-bar colour by how close to the limit: green plenty-left → yellow at the warning (70%) →
+// orange high (80%) → red at the account's pause cap (the limit). Drives every usage bar.
+const WARN_PCT=70, HIGH_PCT=80;
+function usageColor(used,cap){cap=cap||98;
+  if(used>=cap) return 'var(--err)';      // at / over the limit
+  if(used>=HIGH_PCT) return 'var(--orange)'; // above 80% — getting close
+  if(used>=WARN_PCT) return 'var(--warn)';   // in the warning band
+  return 'var(--ok)';}                        // plenty of headroom
+// nextWarn: how many % remain until the NEXT threshold the bar will cross, + a label for it.
+function nextWarn(used,cap){cap=cap||98;
+  if(used<WARN_PCT) return {to:WARN_PCT-used,lbl:'warning'};
+  if(used<HIGH_PCT) return {to:HIGH_PCT-used,lbl:'80%'};
+  if(used<cap)      return {to:cap-used,lbl:'limit'};
+  return {to:0,lbl:'limit reached'};}
+// liveReset: the server sends a reset value (minutes) snapshotted at its last ~5-min poll; tick it
+// DOWN in real time so usage visibly keeps updating every second — for ALL accounts incl. paused.
+let _resetTrack={};
+function liveReset(key,serverVal){
+  if(serverVal==null||serverVal<0)return serverVal;
+  const t=_resetTrack[key];
+  if(!t||Math.abs(t.v-serverVal)>1){_resetTrack[key]={v:serverVal,at:Date.now()};return serverVal;}
+  return Math.max(0,Math.round(t.v-(Date.now()-t.at)/60000));
+}
+function selOpts(id,opts,sel,labels,onch){labels=labels||{};return '<select class="sel" id="'+id+'"'+(onch?' onchange="'+onch+'"':'')+'>'+opts.map(o=>'<option value="'+o+'"'+(o===sel?' selected':'')+'>'+(labels[o]||o||'—')+'</option>').join('')+'</select>';}
+const PACE_CONC={slow:1,light:5,medium:10,high:20,fast:30,'':10};
+const PACE_SUB={slow:0,light:1,medium:2,high:3,fast:5,'':2};
+function prefillCaps(l){const sp=($('#pc-'+l)||{}).value||'';const c=$('#cc-'+l),f=$('#fo-'+l);if(c)c.value=(PACE_CONC[sp]!=null?PACE_CONC[sp]:10);if(f)f.value=(PACE_SUB[sp]!=null?PACE_SUB[sp]:2);}
+let S={}, tab='agents', detail=null, view=localStorage.getItem('cw_view')||'grouped', taskView='tree';
+let _ctrlsOpen=false; // ⚙ controls panel open/closed (persisted across SSE re-renders)
+let _doneSeen={};     // agent name → ts it last finished (for the ~60s "✓ done" dwell so you SEE completions)
+// Universal "show 20 more" pagination: every truncated list shows 20 by default; clicking reveals 20 more,
+// up to the end. State is per-list-id and persists across SSE re-renders.
+let _expand={};
+function _shown(id){return _expand[id]||20;}
+function expandMore(id){_expand[id]=_shown(id)+20;render();}
+function moreBtn(id,total){var s=_shown(id);return total>s
+  ?'<div class="mini" style="color:#38bdf8;cursor:pointer;font-weight:600;padding:5px 0" onclick="event.stopPropagation();expandMore(\''+id+'\')">▾ show 20 more · '+(total-s)+' hidden</div>'
+  :'';}
+// view:all controls — scope (today/all), collapsible sections, and multi-select of tasks for bulk run.
+let scope=localStorage.getItem('cw_scope')||'today';
+function setScope(v){scope=v;localStorage.setItem('cw_scope',v);render();}
+let _collapsed={};
+function toggleCollapse(id){_collapsed[id]=!_collapsed[id];render();}
+let _sel=new Set();
+function toggleSel(k,ev){if(ev)ev.stopPropagation();if(_sel.has(k))_sel.delete(k);else _sel.add(k);render();}
+function selMany(keys){keys.forEach(k=>_sel.add(k));render();}
+function clearSel(){_sel.clear();render();}
+function runSelected(batch){
+  var keys=[..._sel]; if(!keys.length){toast('select some tasks first');return;}
+  keys.forEach(k=>api('/api/activate',{key:k}));            // unblock + prioritise the chosen tasks
+  var all=[...new Set((TEAMS||[]).flatMap(t=>t.agents||[]))];
+  if(batch)runTeamBatch(all); else _runMany(all,runAcct(),'','▶ started');  // agents pick up the activated tasks
+  toast('▶ '+keys.length+' task(s) activated · '+(batch?'batch':'run')+' triggered');
+  _sel.clear();
+}
+function toggleControls(){_ctrlsOpen=!_ctrlsOpen;var e=document.getElementById('cwctrls');if(e)e.style.display=_ctrlsOpen?'flex':'none';}
+let ciStatus=null;  // zero-token CI test status (fetched from /ci-status.json)
+let fnRuns={};      // function-run feed (fetched from /fn-runs.json) — Functions sub-team
+// Agents that are safe to KEEP paused — starting them re-spends tokens on work that's
+// already covered for free. Confirm (with the reason) before resuming one.
+var FLAGGED={
+ 'e2e-test':'The zero-token CI (scripts/ci_tests.py) already runs e2e/integration tests for $0 — starting this re-spends tokens on the same checks.',
+ 'qa':'The zero-token CI already runs unit/integration tests for $0. Use it instead of paying an agent each run.',
+ 'scenario-gen':'Test scenarios are covered by the zero-token CI + the coverage program (PROJ-123) — largely redundant.',
+ 'random-tester':'Exploratory fuzzing rarely finds more than the zero-token CI: high token cost, low yield.',
+ 'visual-test':'Heavy + token-hungry; the zero-token CI + deterministic screenshot diffing cover most of it.',
+ 'sentry-catch':'Sentry is almost always empty (0 errors); polling it with an agent burns tokens for nothing — a 0-token API check is better.',
+ 'sentry-clean':'Sentry is usually empty; cleaning runs find little — wasteful as a recurring agent.',
+ 'reliability':'Overlaps the Sentry agents; mostly reports "all healthy" for a token each run.',
+ 'app-map':'Re-maps the app constantly though the structure rarely changes — high token cost, low value. Run on-demand only.'
+};
+function resumeAgent(name){
+  var r=FLAGGED[name];
+  if(r && !confirm('⚠️ '+name+' — why it is paused:\n\n'+r+'\n\nStart it anyway?')) return;
+  api('/api/resume',{name:name}).then(function(){setTimeout(renderAgents,400);});
+}
+function resumeAll(){
+  if(!confirm('▶ Resume ALL agents?\n\nThis also restarts the wasteful ones (testing, Sentry, app-map) that the zero-token CI / API checks already cover. Prefer starting only what you need.\n\nResume everything anyway?')) return;
+  api('/api/resume',{name:'all'});
+}
+// Manual trigger for the 0-token FUNCTIONS that replaced recurring agents.
+function runFn(name,label){
+  toast('▶ '+label+'…');
+  api('/api/fn',{name:name}).then(r=>r.json()).then(function(d){toast((d&&d.msg)||(label+' done'));}).catch(function(){toast(label+' failed');});
+}
+let treeOpen=new Set();
+let allFrom='', allTo='';   // "All tickets" date filter (newest first)
+let allTicketsCache=null;   // fetched on demand (NOT streamed — it's 1000+ items)
+function loadAllTickets(){fetch('/api/tickets/all',{credentials:'include'}).then(r=>r.json()).then(d=>{allTicketsCache=d.all||[];if(tab==='tasks'&&taskView==='all')renderTasks();}).catch(()=>{allTicketsCache=[];});}
+function fmtDateShort(s){if(!s)return'';const d=new Date(s);if(isNaN(d))return'';return d.toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+function setAllFilter(){const f=$('#alF'),t=$('#alT');if(f)allFrom=f.value;if(t)allTo=t.value;renderTasks();}
+function clearAllFilter(){allFrom='';allTo='';renderTasks();}
+function allRow(i){const dt=fmtDateShort(i.updated||i.created);
+  return '<div class="rowi" style="cursor:pointer" onclick="openTicket(\''+i.key+'\')"><span>'+bugTag(i.key)+'<b style="color:#7dd3fc">'+i.key+'</b> '+esc(i.summary||'').slice(0,64)+'</span><span class="mini" style="white-space:nowrap">'+esc(i.status||'')+(dt?' · '+dt:'')+'</span></div>';}
+function toggleTree(k){if(treeOpen.has(k))treeOpen.delete(k);else treeOpen.add(k);renderTasks();}
+function renderTree(tree){
+  if(!tree||!tree.length)return '<div class="empty">no active main tasks</div>';
+  return (tree||[]).filter(n=>!startedKeys.has(n.key)).map(n=>{const open=treeOpen.has(n.key),kids=n.children&&n.children.length;
+    const childKeys=(n.children||[]).map(c=>c.key).filter(k=>!startedKeys.has(k));
+    const head='<div class="tline" style="border:none">'
+      +'<span style="cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="toggleTree(\''+n.key+'\')">'+bugTag(n.key)+'<b style="color:'+(n.working?'#38bdf8':'#94a3b8')+'">'+(kids?(open?'▾ ':'▸ '):'• ')+esc(n.key)+'</b> '+esc(n.summary).slice(0,44)+'</span>'
+      +(kids&&childKeys.length?'<button class="btn p" onclick=\'startTasks('+JSON.stringify(childKeys)+')\'>▶ start group ('+childKeys.length+')</button>':'<button class="btn p" onclick="startTasks([\''+n.key+'\'])">▶ start</button>')
+      +'</div>';
+    const meta='<div class="mini" style="margin:0 0 3px 2px;color:var(--mut)">'+(n.total>0?(n.done+'/'+n.total+' done · '+n.pct+'%'):'')+'</div>';
+    const bar=n.total>0?'<div class="pbar" style="margin:0 0 6px"><i style="width:'+n.pct+'%;background:'+(n.pct>=100?'#34d399':'#38bdf8')+'"></i></div>':'';
+    let ch='';
+    if(open&&kids)ch=n.children.filter(c=>!startedKeys.has(c.key)).map(c=>'<div class="tline" style="display:block;padding:6px 0 6px 20px;border-bottom:1px solid #131d30"><div style="display:flex;gap:8px"><span style="cursor:pointer;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="openTicket(\''+c.key+'\')">'+bugTag(c.key)+'<b style="color:#cbd5e1">'+esc(c.key)+'</b> <span style="text-decoration:underline">'+esc(c.summary).slice(0,38)+'</span></span><span class="mini" style="color:'+(/progress/i.test(c.status)?'#38bdf8':'#94a3b8')+'">'+(/progress/i.test(c.status)?'🤖 ':'')+esc(c.status)+'</span><button class="btn p" onclick="startTasks([\''+c.key+'\'])">▶</button></div>'+taskTimes(c)+'</div>').join('');
+    return '<div style="border-bottom:1px solid #1b2740;padding:8px 0">'+head+meta+bar+ch+'</div>';
+  }).join('');
+}
+
+function busy(on,txt){const x=document.getElementById('busy');if(!x)return;if(on){document.getElementById('busytxt').textContent=txt||'working…';x.classList.add('show');}else x.classList.remove('show');}
+function toast(msg,ok){let t=document.getElementById('cwtoast');if(!t){t=document.createElement('div');t.id='cwtoast';document.body.appendChild(t);}
+  t.textContent=msg;t.className='show'+(ok===false?' err':'');clearTimeout(window._tt);window._tt=setTimeout(()=>{t.className=(ok===false?'err':'');},1500);}
+// api() also gives the control that triggered it a loading→saved state, and shows a "✓ saved"
+// message — for EVERY settings button/dropdown/checkbox, automatically.
+const api=(u,b)=>{
+  const el=(typeof event!=='undefined'&&event)?(event.currentTarget||event.target):null;
+  let orig=null;
+  if(el&&el.tagName==='BUTTON'){orig=el.innerHTML;el.dataset.busy='1';el.disabled=true;el.textContent='⏳ saving…';}
+  else if(el&&(el.tagName==='SELECT'||el.tagName==='INPUT')){el.classList.add('saving');el.dataset.edited=String(Date.now());} // mark just-edited so re-renders don't flip it back
+  busy(true,(b&&b.name?b.name+' · ':'')+(u.split('/').pop()));
+  return fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(b||{})})
+   .then(r=>{if(r.status===401){location.reload();}
+     const okk=r.ok!==false;
+     if(el&&el.dataset&&el.dataset.busy){el.textContent='✓ saved';setTimeout(()=>{if(el.dataset.busy){el.innerHTML=orig;el.disabled=false;delete el.dataset.busy;}},1000);}
+     else if(el&&el.classList){el.classList.remove('saving');el.classList.add('saved');setTimeout(()=>el.classList&&el.classList.remove('saved'),1000);}
+     if(!okk)toast('server busy — try again',false); // success no longer pops a toast on every click; the button/input shows ✓ inline
+     return r;})
+   .catch(e=>{if(el&&el.dataset&&el.dataset.busy){el.innerHTML=orig;el.disabled=false;delete el.dataset.busy;}else if(el&&el.classList){el.classList.remove('saving');}toast('failed',false);throw e;})
+   .finally(()=>busy(false));};
+
+/* ---------- auth ---------- */
+async function boot(){
+  const authed=await fetch('/api/history',{credentials:'include'}).then(r=>r.status!==401).catch(()=>false);
+  if(authed){$('#login').classList.add('hidden');start();}
+  else{$('#login').classList.remove('hidden');}
+}
+async function doLogin(){
+  const r=await api('/api/login',{user:$('#lu').value,pass:$('#lp').value});
+  if(r.ok){$('#login').classList.add('hidden');start();}
+  else{$('#lerr').textContent='wrong username or password';$('#lerr').style.color='var(--err)';}
+}
+// refresh = re-render the CURRENT view from the live SSE state — no full page reload
+function refreshNow(){
+  if(detail==='__accounts__')renderAccounts();
+  else if(detail==='__needs__')renderNeeds();
+  else if(detail==='__settings__')renderSettings();
+  else if(detail==='__history__')renderHistory();
+  else if(detail==='__human__')renderHuman();
+  else if(detail==='__ticket__'&&ticketKey)renderTicket(ticketKey);
+  else render();
+  toast('updated');
+}
+function logout(){api('/api/logout',{}).then(()=>location.reload());}
+
+const TABS=[['agents','🟢','Tasks'],['tasks','🎫','Backlog'],['mm','📣','Media'],['accounts','🔑','Accounts'],['devices','🔌','Devices'],['servers','🖥️','Servers']];
+function smoothPct(a){const p=a.progress||{};if(p.done||a.state==='done')return 100;if(p.pct>0)return Math.min(100,p.pct);
+  if(a.state==='running'&&a.startedAt){const t=(Date.now()-new Date(a.startedAt).getTime())/1000;if(t>0)return Math.min(93,Math.round(100*(1-Math.exp(-t/180))));}
+  return a.state==='running'?4:0;}
+// Dedupe innerHTML writes: skip the DOM swap when the new HTML equals what's already there.
+// This stops the whole-page "refresh/flicker" every SSE tick (most ticks don't change a panel),
+// so live updates apply in the background without wiping scroll, focus, or your click state.
+function dedupHTML(el){ if(!el||el._dedup) return; el._dedup=1;
+  const d=Object.getOwnPropertyDescriptor(Element.prototype,'innerHTML');
+  Object.defineProperty(el,'innerHTML',{configurable:true,
+    get(){return d.get.call(this);},
+    set(v){ if(this._lh===v) return; this._lh=v; d.set.call(this,v); }});
+}
+function start(){
+  $('#app').classList.remove('hidden');$('#tabbar').classList.remove('hidden');$('#fab').classList.remove('hidden');
+  dedupHTML($('#main')); dedupHTML($('#aside')); // background updates, no flicker
+  $('#tabbar').innerHTML=TABS.map(t=>'<a id="tb-'+t[0]+'" onclick="goTab(\''+t[0]+'\')"><span class="ic">'+t[1]+'</span>'+t[2]+'</a>').join('');
+  const es=new EventSource('/api/stream',{withCredentials:true});
+  // Live re-render every tick — BUT if the owner is selecting/copying text, defer the re-render
+  // (innerHTML swap would clear the selection). Flush the held update the moment the selection clears.
+  es.onmessage=e=>{try{S=JSON.parse(e.data);if(hasSel()){_pendingRender=true;return;}render();}catch(_){}};
+  document.addEventListener('selectionchange',()=>{if(_pendingRender&&!hasSel()){_pendingRender=false;render();}});
+  es.onerror=()=>{$('#clock').textContent='⚠ reconnecting…';};
+  loadCi(); setInterval(loadCi, 30000);   // zero-token CI test status
+  loadFn(); setInterval(loadFn, 30000);   // function-run feed (Functions sub-team)
+  restoreView();
+}
+// Restore the page the owner was on before a browser refresh (saved by render() in localStorage cw_nav).
+function restoreView(){
+  var n=null; try{n=JSON.parse(localStorage.getItem('cw_nav')||'null');}catch(_){}
+  if(!n||!n.tab){goTab('agents');return;}
+  tab=n.tab; taskView=n.taskView||taskView;
+  TABS.forEach(x=>{const e=$('#tb-'+x[0]);if(e)e.className=(x[0]===tab?'act':'');});
+  if(n.detail==='__ticket__'&&n.ticketKey){openTicket(n.ticketKey);}
+  else if(n.detail){openV(n.detail);}  // team:NAME / agent / __settings__/__accounts__/… — openV renders each
+  else render();
+}
+function goTab(t){tab=t;detail=null;TABS.forEach(x=>{const e=$('#tb-'+x[0]);if(e)e.className=(x[0]===t?'act':'');});
+  if(t==='accounts'){openV('__accounts__');return;} // accounts has no plain-tab body; open its full page (works on phone too)
+  render();}
+function openA(n){detail=n;render();}
+function openV(v){detail=v;render();if(v==='__settings__')renderSettings();if(v==='__history__')renderHistory();if(v==='__accounts__')renderAccounts();if(v==='__needs__')renderNeeds();if(v==='__human__')renderHuman();if(v==='__chat__')renderChat();}
+let ticketKey=null;
+function openTicket(k){ticketKey=k;detail='__ticket__';render();renderTicket(k);}
+// per-ticket pipeline tracker: 🛠 Build → 🔍 Review → 🧪 Test → 🚀 Deploy → ✓ Done, each shown as
+// ✓ pass / ↻ in progress / ☐ waiting / ✗ failed — derived from the ticket's labels + status.
+function pipeHTML(lbls,status){
+  var L=(lbls||[]).map(function(x){return String(x).toLowerCase();});
+  var has=function(){for(var i=0;i<arguments.length;i++){if(L.indexOf(arguments[i])>=0)return true;}return false;};
+  var done=/done|closed|resolved/i.test(status||''), cancel=/cancel/i.test(status||'');
+  if(cancel) return '<div class="mini" style="color:#f87171;font-weight:700;margin:8px 0">🚫 Cancelled</div>';
+  // index of the CURRENT (active) stage: 0 build,1 review,2 test,3 deploy,4 done
+  var reached = done?4
+    : has('ready-to-deploy','stage-deploy')?3
+    : (has('ready-for-test','stage-test')||(has('code-approved')&&has('security-approved')))?2
+    : has('ready-for-review','stage-review','code-approved','security-approved')?1
+    : has('stage-building')?0 : -1;
+  var failAt = has('changes-requested')?1 : has('test-failure')?2 : -1;
+  var names=['Build','Review','Test','Deploy'], ico={pass:'✓',active:'↻',wait:'☐',fail:'✗'},
+      col={pass:'#34d399',active:'#fbbf24',wait:'var(--mut)',fail:'#f87171'};
+  var cells=names.map(function(nm,i){
+    var st = (failAt===i)?'fail' : done?'pass' : (reached<0)?'wait' : (i<reached)?'pass' : (i===reached)?'active':'wait';
+    var word={pass:'pass',active:'working',wait:'waiting',fail:'failed'}[st];
+    return '<span style="color:'+col[st]+';white-space:nowrap">'+ico[st]+' '+nm+' <span style="opacity:.7;font-weight:400">'+word+'</span></span>';
+  });
+  cells.push('<span style="color:'+(done?'#34d399':'var(--mut)')+';white-space:nowrap">'+(done?'✓':'☐')+' Done</span>');
+  return '<div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;font-weight:600;margin:10px 0;align-items:center">'
+    +cells.join('<span style="color:var(--line)">→</span>')+'</div>';
+}
+function renderTicket(k){
+  $('#main').innerHTML='<span class="back" onclick="goTab(tab)">← back</span><div class="empty">loading '+esc(k)+'…</div>';
+  fetch('/api/ticket?key='+encodeURIComponent(k),{credentials:'include'}).then(r=>r.json()).then(d=>{
+    if(!d||d.error){$('#main').innerHTML='<span class="back" onclick="goTab(tab)">← back</span><div class="empty">could not load '+esc(k)+'</div>';return;}
+    const labels=(d.labels||[]).slice(0,4).map(x=>'<span class="tagk">'+esc(x)+'</span>').join(' ');
+    // brief = first 2 sentences of the description, capped ~240 chars (no wall of text)
+    const raw=(d.description||'').replace(/\s+/g,' ').trim();
+    let brief=raw.split(/(?<=[.!?])\s/).slice(0,2).join(' ');
+    if(brief.length>240)brief=brief.slice(0,237)+'…';
+    if(!brief)brief='(no description)';
+    const ncom=(d.comments||[]).length;
+    const lbls=(d.labels||[]).map(x=>x.toLowerCase());
+    const isErr=lbls.some(x=>['bug','sentry','error','e2e','regression','visual'].includes(x));
+    const isDone=/done|closed|resolved/i.test(d.status||'');
+    // The fleet APPROVES ITSELF (reviewers are the approval) — don't ask the owner. Only show an approve
+    // button when the ticket GENUINELY needs a human (labelled needs-human/approval/blocked/wait-for-*).
+    // Everything else in the normal pipeline is auto-handled; just show that it's moving on its own.
+    const needsHuman=lbls.some(x=>['needs-human','approval','blocked','do-not-merge','wait-for-human-test','wait-for-hardware-test'].includes(x));
+    let action='';
+    if(isDone)action='';
+    else if(needsHuman)action='<button class="btn p" onclick="approveTicket(\''+d.key+'\')">✓ approve &amp; continue</button> ';
+    else if(isErr)action='<span class="mini" style="color:var(--mut)">🐞 auto-fixed by the fleet (bugs run first) — no action needed</span> ';
+    else action='<span class="mini" style="color:var(--mut)">✓ auto-handled by the fleet — it reviews, approves, and ships itself; no approval needed</span> ';
+    $('#main').innerHTML='<span class="back" onclick="goTab(tab)">← back</span>'
+      +'<div class="panel">'
+      +'<div style="font-size:14px;font-weight:600;color:var(--tx)">'+esc(d.key)+' · '+esc(d.summary)+'</div>'
+      +'<div class="meta" style="margin:6px 0">'+esc(d.status||'')+' · '+esc(d.priority||'')+(labels?' · '+labels:'')+'</div>'
+      +pipeHTML(d.labels,d.status)
+      +'<div style="font-size:13px;line-height:1.55;color:#cfead8">'+esc(brief)+'</div>'
+      +(ncom?'<div class="mini" style="margin-top:8px">💬 '+ncom+' comment'+(ncom>1?'s':'')+' — open in Jira for the full thread</div>':'')
+      +'<div class="acts" style="margin-top:12px">'+action+'<a class="btn" href="'+d.url+'" target="_blank">open in Jira ↗</a></div>'
+      +'</div>';
+  }).catch(()=>{$('#main').innerHTML='<span class="back" onclick="goTab(tab)">← back</span><div class="empty">error loading</div>';});
+}
+// keys the owner just approved — filtered out locally so the count drops instantly and
+// doesn't flicker back if Jira's search index lags a second behind the label removal.
+let approvedKeys=new Set();
+let removedAccts=new Set();   // accounts just removed — hide instantly (live), don't wait for SSE
+let acctLoginActive=false;    // a login panel is open → don't let the live refresh wipe it
+let hwOpen=false;             // hardware-wait section collapsed by default
+function approveTicket(k){
+  if(!confirm('Approve '+k+'? The agent will continue and it leaves this list.'))return;
+  approvedKeys.add(k);
+  api('/api/activate',{key:k}).then(x=>x.json()).then(d=>{if(!d||!d.ok){/* keep optimistic; server retries */}}).catch(()=>{});
+  if(detail==='__ticket__'){alert('Approved '+k+' ✓');goTab(tab);}
+  else renderNeeds();
+}
+function ownerReqDone(id){api('/api/owner-request/done',{id:id}).then(()=>{toast('✓ done');setTimeout(renderNeeds,400);});}
+function ownerReqSection(){const rs=S.ownerRequests||[];
+  return '<div class="panel"><h2>🔑 Access / external actions ('+rs.length+')</h2>'
+    +'<div class="empty">Agents put anything they need YOU to do outside the system here — grant access, add a key, authorize a portal. Brief, with steps + links.</div>'
+    +(rs.length?rs.map(r=>'<div class="tline" style="display:block;border-bottom:1px solid #18233a;padding:8px 0"><div style="display:flex;gap:8px;align-items:center"><b style="color:#fbbf24;flex:1">'+esc(r.title||'(request)')+'</b>'+(r.who?'<span class="tagk">'+esc(r.who)+'</span>':'')+'<button class="btn p" onclick="ownerReqDone(\''+esc((r.id||r.title||'').replace(/'/g,''))+'\')">✓ done</button></div>'
+      +(r.guide?'<div class="mini" style="color:var(--mut);margin-top:4px;white-space:pre-wrap">'+esc(r.guide)+'</div>':'')
+      +((r.urls&&r.urls.length)?'<div class="mini" style="margin-top:4px">'+r.urls.map(u=>'<a href="'+esc(u)+'" target="_blank" style="color:#7dd3fc">'+esc(u)+'</a>').join(' · ')+'</div>':'')
+      +'</div>').join(''):'<div class="empty">nothing needed from you 🎉</div>')+'</div>';
+}
+function fmtTicketTs(v){const d=v?new Date(v):null;if(!d||isNaN(d))return '—';
+  return d.toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+function fmtTicketAge(v){const d=v?new Date(v):null;if(!d||isNaN(d))return '—';
+  const diff=Math.max(0,Date.now()-d.getTime()),m=Math.floor(diff/60000),h=Math.floor(m/60),days=Math.floor(h/24);
+  if(m<60)return m+'m ago';if(h<24)return h+'h ago';return days+'d ago';}
+function ticketSnap(i,opt={}){
+  const color=opt.color||'var(--acc)',action=opt.action||'',metaExtra=opt.metaExtra||'';
+  const parent=i.parentKey?'<span class="tagk">'+esc(i.parentKey)+'</span>':'';
+  const parentSummary=i.parentSummary?'<div class="mini" style="margin-top:4px">parent · <b>'+esc(i.parentSummary)+'</b></div>':'';
+  return '<div class="card" style="cursor:default;padding:12px 13px" onclick="openTicket(\''+i.key+'\')">'
+    +'<h3 style="font-size:13px"><span style="color:'+color+'">'+esc(i.key)+'</span> '+parent+'</h3>'
+    +'<div style="font-size:13px;line-height:1.45;margin-top:6px">'+esc(i.summary||'').slice(0,140)+'</div>'
+    +parentSummary
+    +'<div class="meta" style="margin-top:8px">'
+      +'<span><b>'+esc(i.status||'—')+'</b></span>'
+      +'<span>updated '+fmtTicketAge(i.updated)+'</span>'
+      +'<span>created '+fmtTicketTs(i.created)+'</span>'
+      +(metaExtra?'<span>'+metaExtra+'</span>':'')
+    +'</div>'
+    +'<div class="acts" style="margin-top:10px">'+action+'<a class="btn" href="'+i.url+'" target="_blank" onclick="event.stopPropagation()">open Jira ↗</a></div>'
+    +'</div>';}
+function ticketStat(label,count,desc,tone){
+  return '<div class="pc"><div class="lab"><span>'+label+'</span><b style="color:'+tone+'">'+count+'</b></div><div class="mini">'+desc+'</div></div>';}
+function renderNeeds(){
+  const tk=S.tickets||{};
+  const flt=l=>(l||[]).filter(i=>!approvedKeys.has(i.key));
+  const sect=(t,desc,list,color,approve,empty)=>{const L=flt(list);return '<div class="panel"><h2>'+t+' ('+L.length+')</h2><div class="empty">'+desc+'</div>'
+    +(L.length?'<div class="grid" style="margin-top:12px">'+L.map(i=>ticketSnap(i,{color:color,action:(approve?'<button class="btn p" onclick="event.stopPropagation();approveTicket(\''+i.key+'\')">✓ approve</button> ':'')})).join('')+'</div>':'<div class="empty">'+(empty||'nothing here 🎉')+'</div>')+'</div>';};
+  const hw=flt(tk.hwWait);
+  const approval=flt(tk.approval);
+  $('#main').innerHTML='<span class="back" onclick="goTab(tab)">← back</span><h2 class="sec" style="font-size:16px;color:var(--tx);text-transform:none">🙋 Needs you (waiting for your answer)</h2>'
+    +'<div class="path">'
+      +ticketStat('Approval / questions',approval.length,'Explicit asks that need your answer before the agent can continue.','#fbbf24')
+      +ticketStat('Hardware waiting',hw.length,'Work parked until a device appears or you start it manually.','#38bdf8')
+      +ticketStat('External access',((S.ownerRequests||[]).length),'Anything the system cannot do itself: keys, portals, 2FA or authorisation.','var(--warn)')
+    +'</div>'
+    +ownerReqSection()
+    +sect('✅ Approval / questions','Answer/approve to unblock — the agent continues after.',tk.approval,'#fbbf24',true,'No approval blockers right now 🎉')
+    // hardware-wait collapsed behind a button (opens on tap); auto-starts when a device connects
+    +'<div class="panel"><h2 style="cursor:pointer" onclick="hwOpen=!hwOpen;renderNeeds()">🔌 Waiting for hardware ('+hw.length+') <span class="mini">'+(hwOpen?'▾ tap to hide':'▸ tap to open')+'</span></h2>'
+    +'<div class="empty">When you plug in / add the device, these auto-start — no action needed.</div>'
+    +(hwOpen?(hw.length?'<div class="grid" style="margin-top:12px">'+hw.map(i=>ticketSnap(i,{color:'#38bdf8',action:'<button class="btn p" onclick="event.stopPropagation();approveTicket(\''+i.key+'\')">▶ start now</button> '})).join('')+'</div>':'<div class="empty">nothing waiting on hardware 🎉</div>'):'')
+    +'</div>';
+}
+function renderHuman(){
+  const tk=S.tickets||{},list=(tk.humanTest||[]).slice().sort((a,b)=>new Date(b.updated||0)-new Date(a.updated||0));
+  const byStatus=list.reduce((m,i)=>{const k=i.status||'Unknown';m[k]=(m[k]||0)+1;return m;},{});
+  const stale=list.filter(i=>{const d=new Date(i.updated||0);return d&&Date.now()-d.getTime()>3*24*60*60*1000;}).length;
+  const stats=[
+    ticketStat('Waiting for human test',list.length,'Already machine-tested; these are parked for real-world confirmation.','var(--acc)'),
+    ticketStat('In review',byStatus['In Review']||0,'Review-gated work that also wants a human pass once it lands.','#a78bfa'),
+    ticketStat('Stale > 3 days',stale,'Older waiting items that likely need triage or a fresh pass.','var(--warn)')
+  ];
+  const grouped=Object.entries(list.reduce((m,i)=>{const k=i.status||'Unknown';(m[k]=m[k]||[]).push(i);return m;},{}))
+    .sort((a,b)=>b[1].length-a[1].length);
+  $('#main').innerHTML='<span class="back" onclick="goTab(tab)">← back</span><h2 class="sec" style="font-size:16px;color:var(--tx);text-transform:none">🧪 Human test (not blocking — test when you can)</h2>'
+    +'<div class="path">'+stats.join('')+'</div>'
+    +'<div class="panel"><div class="empty">Virtually tested + published; these just need your real-device confirmation. They are NOT waiting for an answer.</div>'
+    +(list.length?grouped.map(([status,items])=>'<div style="margin-top:14px"><div class="subline"><b>'+esc(status)+'</b><span>'+items.length+' ticket'+(items.length===1?'':'s')+'</span></div><div class="grid">'+items.map(i=>ticketSnap(i,{color:'#34d399',metaExtra:(i.parentKey?('epic '+esc(i.parentKey)):'')})).join('')+'</div></div>').join(''):'<div class="empty">nothing awaiting human test 🎉</div>')+'</div>';
+}
+function renderAccounts(){
+  const ac=(S.accounts||[]).filter(a=>!removedAccts.has(a.label))
+    .slice().sort((x,y)=>(x.engine==='codex'?1:0)-(y.engine==='codex'?1:0)); // Claude first, then Codex
+  let h='<span class="back" onclick="goTab(tab)">← back</span><h2 class="sec" style="font-size:16px;color:var(--tx);text-transform:none">Accounts (all local on your Mac)</h2>'
+    +'<div class="empty" style="margin-bottom:8px">🔒 Each account runs in its own isolated profile on THIS Mac. Your work is stored locally — anyone else sharing the same login can NOT see your conversations, data, or computer.</div>';
+  h+=ac.map(a=>{const lid=a.label.replace(/'/g,'');
+    const name=a.email||a.label;  // show the REAL signed-in email, not a hand-typed label
+    const win=(a.fromHour||a.toHour)?(a.fromHour+':00–'+a.toHour+':00'):'24/7';
+    return '<div class="panel"><h3 style="display:flex;align-items:center;gap:6px">'+esc(name)+' <span class="tagk">'+esc(a.engine)+'</span>'+(a.paused?' <span style="color:var(--pause)">paused</span>':'')
+      +'<span style="flex:1"></span><span class="bdg '+((a.running||0)>0?'s-running':'s-idle')+'" title="agents working on this account right now">'+(a.running||0)+' / '+(a.concEffective||0)+' working</span></h3>'
+      +(a.email&&a.email!==a.label?'<div class="mini" style="color:var(--mut)">slot: '+esc(a.label)+'</div>':'')
+      +(a.duplicate?'<div class="mini" style="color:var(--err);border:1px solid var(--err);border-radius:7px;padding:4px 8px;margin-top:4px">⚠ SAME login as <b>'+esc(a.dupOf)+'</b> ('+esc(a.email)+') — this isn\'t a 2nd account; it shares one quota. Log this slot into a DIFFERENT account to use it.</div>':'')
+      +(a.week>=0?(function(){const wk=a.week,hr=(a.hour>=0?a.hour:0);
+        const colw=usageColor(wk,a.cap),nww=nextWarn(wk,a.cap),colh=usageColor(hr,100),nwh=nextWarn(hr,100);
+        const toTxt=(nw,col)=>nw.to>0?(' · <span style="color:'+col+'">'+nw.to+'% to '+nw.lbl+'</span>'):(' · <span style="color:var(--err)">⚠ '+nw.lbl+'</span>');
+        // Match /usage's order: Current session FIRST (the active window), then Weekly.
+        return '<div class="mini" style="margin-top:5px">current session <b>'+hr+'% used</b> · <b style="color:'+colh+'">'+Math.max(0,100-hr)+'% left</b>'+toTxt(nwh,colh)+(a.stale?' · <span style="color:var(--mut)" title="last known — live fetch unavailable">~stale</span>':'')+(a.hourReset>=0?(' · ↻ resets '+fmtMin(liveReset(a.label+"h",a.hourReset))):'')+((S.bannerAccounts||[]).includes(a.label)?' · <span class="free">📊 on banner</span>':'')+'</div>'
+          +'<div class="pbar" style="margin:3px 0 6px"><i style="width:'+Math.min(100,hr)+'%;background:'+colh+'"></i></div>'
+          +'<div class="mini">weekly (all models) <b>'+wk+'% used</b> · <b style="color:'+colw+'">'+Math.max(0,100-wk)+'% left</b>'+toTxt(nww,colw)+(a.weekReset>=0?(' · ↻ resets '+fmtMin(liveReset(a.label+"w",a.weekReset))):'')+'</div>'
+          +'<div class="pbar" style="margin:3px 0 4px"><i style="width:'+Math.min(100,wk)+'%;background:'+colw+'"></i></div>';
+       })():'<div class="mini" style="margin-top:3px">'+esc(a.note||'—')+'</div>')
+      +'<div class="mini" style="margin-top:4px">'+(a.loggedIn?'<span class="free">● logged in</span>':'<span class="off">● not logged in</span>')
+        +' · <b style="color:'+((a.running||0)>0?'var(--ok)':'var(--mut)')+'">'+(a.running||0)+'</b> agent'+((a.running||0)===1?'':'s')+' working</div>'
+      +(a.paused&&(a.running||0)>0?'<div class="mini" style="margin-top:3px;color:var(--pause)">⏸ pausing — letting '+(a.running)+' running agent'+((a.running)===1?'':'s')+' finish first (no new work will start)</div>':'')
+      +(a.paused&&(a.running||0)===0?'<div class="mini" style="margin-top:3px;color:var(--pause)">⏸ paused — idle</div>':'')
+      +'<div class="acts" style="margin-top:8px"><button class="btn'+(a.paused?'':' p')+'" onclick="api(\'/api/acctpause\',{label:\''+lid+'\',on:\''+(a.paused?'false':'true')+'\'})">'+(a.paused?'▶ resume':'⏸ pause')+'</button>'
+      +(a.paused?'':'<button class="btn" title="Pause this account FAST: stop new + kill only THIS account\'s running agents now (safe, resumable). Other accounts keep working." onclick="api(\'/api/acctpausefast\',{label:\''+lid+'\'})">⏸ fast</button>')
+      +'<button class="btn p" onclick="acctLogin(\''+lid+'\')">🔑 login by URL</button>'
+      +'<button class="btn" onclick="acctLoginTerminal(\''+lid+'\')">login in Terminal</button>'
+      +'<button class="btn" onclick="api(\'/api/acctlogout\',{label:\''+lid+'\'})">logout</button>'
+      +(function(){const on=(S.bannerAccounts||[]).includes(a.label);return '<button class="btn'+(on?' p':'')+'" onclick="api(\'/api/banneracct\',{label:\''+lid+'\'})">📊 '+(on?'✓ on banner':'show on banner')+'</button>';})()
+      +'<button class="btn" style="color:var(--pause)" onclick="acctDel(\''+lid+'\')">🗑 remove</button></div>'
+      +'<div id="login-'+lid+'"></div>'
+      +'<label class="mini" style="display:block;margin-top:10px"><input type="checkbox" '+(a.hardPause?'checked':'')+' onchange="api(\'/api/acctconfig\',{label:\''+lid+'\',hardPause:this.checked.toString()})"/> hard-pause before the yellow warning <span style="color:var(--mut)">(unchecked = keep working, notify only)</span></label>'
+      +'<label class="mini" style="display:block;margin-top:6px"><input type="checkbox" '+(a.useSonnet?'checked':'')+' onchange="api(\'/api/acctconfig\',{label:\''+lid+'\',useSonnet:this.checked.toString()})"/> 🟦 use <b>Sonnet</b> on this account <span style="color:var(--mut)">(cheaper — runs its agents on Sonnet instead of Opus)</span></label>'
+      +(function(){var cdx=(a.engine==='codex');var ml=cdx?'Codex':(a.useSonnet?'Sonnet':'Opus');var mcA=cdx?'#a78bfa':(a.useSonnet?MODEL_COL.Sonnet:MODEL_COL.Opus);return '<div class="mini" style="margin-top:4px">▶ this account runs its agents on <b style="color:'+mcA+'">'+ml+'</b>'+(cdx?'':(a.useSonnet?'':' <span style="color:var(--mut)">(full model — Sonnet toggle is off)</span>'))+'</div>';})()
+      +'<div class="sch" style="margin-top:10px;flex-wrap:wrap"><span class="mini">pause at weekly</span>'+capSelect(lid,a.pausePct||a.cap||95)
+        +'<span class="mini">days</span><input id="dy-'+lid+'" value="'+esc(a.days||'')+'" placeholder="1-5" style="width:60px"/>'
+        +'<span class="mini">from</span><input id="fh-'+lid+'" type="number" value="'+(a.fromHour||0)+'" style="width:48px"/>'
+        +'<span class="mini">to</span><input id="th-'+lid+'" type="number" value="'+(a.toHour||0)+'" style="width:48px"/></div>'
+      +'<div class="sch" style="margin-top:8px;flex-wrap:wrap"><span class="mini">speed</span>'+selOpts('pc-'+lid,['','slow','light','medium','high','fast'],a.pace||'',{'':'global'},'prefillCaps(\''+lid+'\')')
+        +'<span class="mini">effort</span><span class="mini" title="Effort is automatic & locked (decided per agent+task)">🔒 auto</span>'
+        +'<span class="mini">run at once</span><input id="cc-'+lid+'" type="number" min="1" max="40" value="'+(a.concEffective||0)+'" title="agents at once (speed prefills this — you can change it)" style="width:52px"/>'
+        +'<span class="mini">sub</span><input id="fo-'+lid+'" type="number" min="0" max="20" value="'+(a.fanEffective||0)+'" title="sub-agents per agent" style="width:48px"/>'
+        +'<button class="btn p" onclick="saveAcct(\''+lid+'\')">save</button></div>'
+      +'<div class="mini" style="margin-top:4px">speed '+(a.pace||'global')+' · effort '+(a.effort||'global')+' · runs <b style="color:var(--ok)">'+(a.concEffective||0)+'</b> at once + <b>'+(a.fanEffective||0)+'</b> sub'+(a.concurrency?' (custom)':' (from speed)')+' · changing speed prefills these · operates '+win+' '+(a.days?('days '+esc(a.days)):'every day')+'</div></div>';
+  }).join('');
+  h+='<div class="panel"><h2>➕ Add account (any AI engine)</h2>'
+    +'<div class="mini" style="margin-bottom:6px">Name it + pick the engine. Added <b>logged-out</b> — then <b>🔑 login by URL</b> on its card. For Google/Gemini or any other CLI, pick <b>other</b> and give the run command (it receives the task in <span class="mono">$WORKER_PROMPT</span>).</div>'
+    +'<input class="fin" id="na-label" placeholder="a name (e.g. friend-1, gemini-1, my-second)"/>'
+    +'<select class="fin" id="na-engine" onchange="naEngineChanged()"><option value="claude">Claude</option><option value="codex">Codex (ChatGPT)</option><option value="gemini">Google Gemini</option><option value="other">other CLI…</option></select>'
+    +'<input class="fin" id="na-cmd" placeholder="run command (e.g. gemini -p \"$WORKER_PROMPT\")" style="display:none"/>'
+    +'<button class="btn p" onclick="addAcct()">add account</button></div>';
+  h+='<div id="integrations-wrap" style="margin-top:6px"><div class="empty">loading integrations…</div></div>';
+  $('#main').innerHTML=h;
+  loadIntegrations();
+}
+/* ---------- Integrations: connect YOUR OWN Jira/Confluence/Sentry/GitHub/Telegram/backend ---------- */
+let INTG={integrations:[],monitors:[]};
+function loadIntegrations(){
+  fetch('/api/integrations',{credentials:'include'}).then(r=>r.json()).then(d=>{INTG=d||INTG;renderIntegrations();}).catch(()=>{});
+}
+function renderIntegrations(){
+  const wrap=document.getElementById('integrations-wrap');if(!wrap)return;
+  let h='<h2 class="sec" style="font-size:16px;color:var(--tx);text-transform:none;margin-top:18px">🔗 Connect your accounts</h2>'
+   +'<div class="empty" style="margin-bottom:8px">Sign in to the services <b>this fleet</b> works with — your own Jira, Confluence, Sentry, GitHub, Telegram. Tokens are stored only in a local file on this computer (gitignored) and never leave it or get committed.</div>';
+  h+=(INTG.integrations||[]).map(it=>{
+    const badge=it.connected?'<span class="free">● connected</span>':'<span class="off">○ not connected</span>';
+    const f=(it.fields||[]).map(fld=>{
+      const id='intf-'+fld.key;
+      const lbl='<label class="mini" style="display:block;margin-top:8px">'+esc(fld.label)+(fld.optional?' <span style="color:var(--mut)">(optional)</span>':'')+(fld.help?'<br><span style="color:var(--mut)">'+esc(fld.help)+'</span>':'')+'</label>';
+      if(fld.secret){
+        return lbl+'<div style="display:flex;gap:6px"><input class="fin" id="'+id+'" type="password" autocomplete="off" placeholder="'+(fld.set?'•••••• saved — leave blank to keep':esc(fld.placeholder||'paste token'))+'" style="flex:1"/>'
+          +(fld.set?'<button class="btn" onclick="revealField(\''+fld.key+'\')">👁 reveal</button>':'')+'</div>';
+      }
+      return lbl+'<input class="fin" id="'+id+'" value="'+esc(fld.value||'')+'" placeholder="'+esc(fld.placeholder||'')+'"/>';
+    }).join('');
+    return '<div class="panel"><h3 style="display:flex;align-items:center;gap:6px">'+esc(it.icon)+' '+esc(it.name)+'<span style="flex:1"></span>'+badge+'</h3>'
+      +'<div class="mini" style="color:var(--mut);margin:2px 0 4px">'+esc(it.blurb)+(it.docUrl?' <a href="'+esc(it.docUrl)+'" target="_blank" rel="noopener">Get a token ↗</a>':'')+'</div>'
+      +f
+      +'<div class="acts" style="margin-top:10px"><button class="btn p" onclick="saveIntegration(\''+it.id+'\')">save</button>'
+      +(it.testable?'<button class="btn" onclick="testIntegration(\''+it.id+'\')">test connection</button>':'')
+      +'<span class="mini" id="inttest-'+it.id+'" style="margin-left:8px"></span></div></div>';
+  }).join('');
+  const monTxt=(INTG.monitors||[]).map(m=>m.name+' | '+m.url).join('\n');
+  h+='<div class="panel"><h3>🖥️ Backend / services to watch</h3>'
+    +'<div class="mini" style="color:var(--mut);margin-bottom:4px">Your API / servers, one per line as <span class="mono">Name | https://url</span>. Health-checked live on the Servers tab.</div>'
+    +'<textarea class="fin" id="mon-urls" rows="5" style="width:100%;font-family:monospace">'+esc(monTxt)+'</textarea>'
+    +'<button class="btn p" onclick="saveMonitors()" style="margin-top:6px">save servers</button></div>';
+  wrap.innerHTML=h;
+}
+function saveIntegration(id){
+  const it=(INTG.integrations||[]).find(x=>x.id===id);if(!it)return;
+  const b={};(it.fields||[]).forEach(fld=>{const e=document.getElementById('intf-'+fld.key);if(e)b[fld.key]=e.value;});
+  api('/api/integrations/save',b).then(r=>r.json()).then(d=>{if(d&&d.integrations){INTG.integrations=d.integrations;renderIntegrations();}});
+}
+function testIntegration(id){
+  const s=document.getElementById('inttest-'+id);if(s){s.textContent='⏳ testing…';s.style.color='var(--mut)';}
+  api('/api/integrations/test',{id:id}).then(r=>r.json()).then(d=>{if(s){s.textContent=(d.ok?'✓ ':'✗ ')+(d.msg||'');s.style.color=d.ok?'var(--ok)':'var(--err)';}});
+}
+function revealField(key){
+  api('/api/integrations/reveal',{key:key}).then(r=>r.json()).then(d=>{const e=document.getElementById('intf-'+key);if(e){e.type='text';e.value=d.value||'';}});
+}
+function saveMonitors(){
+  const e=document.getElementById('mon-urls');api('/api/monitors/save',{urls:e?e.value:''}).then(()=>toast('servers saved',true));
+}
+const ENGINE_CMD={gemini:'gemini -p "$WORKER_PROMPT"',codex:'CODEX_HOME=$HOME/.cw-accounts/<name>-codex scripts/codex-task.sh --write "$WORKER_PROMPT"',other:''};
+function naEngineChanged(){const e=$('#na-engine').value,c=$('#na-cmd');if(!c)return;
+  if(e==='claude'){c.style.display='none';c.value='';}
+  else{c.style.display='';c.value=ENGINE_CMD[e]||'';}}
+// weekly auto-pause % — TYPE any value manually (presets 15/30/45/60/75/95 offered as quick picks)
+function capSelect(lid,cur){
+  return '<input id="pp-'+lid+'" type="number" min="1" max="100" value="'+cur+'" list="cappresets" style="width:58px" onchange="api(\'/api/acctconfig\',{label:\''+lid+'\',pausePct:this.value})"/>%';}
+function saveAcct(l){const e=$('#pp-'+l);api('/api/acctconfig',{label:l,pausePct:(e?e.value:''),days:$('#dy-'+l).value,fromHour:$('#fh-'+l).value,toHour:$('#th-'+l).value,pace:$('#pc-'+l).value,effort:(($('#ef-'+l)||{}).value||''),concurrency:($('#cc-'+l)||{}).value||'0',fanout:($('#fo-'+l)||{}).value||'0'}).then(()=>setTimeout(renderAccounts,1100));}
+function acctDel(l){if(!confirm('Remove account "'+l+'"? (its login profile stays on disk; only this slot is removed)'))return;
+  removedAccts.add(l);renderAccounts();  // live: drop it immediately
+  api('/api/acctdel',{label:l}).catch(()=>{});}
+function addAcct(){const v=($('#na-label').value||'').trim();if(!v){alert('Give the account a name first');return;}
+  // add = SAVE the slot (logged-out). Login is a separate explicit step on the card.
+  const eng=$('#na-engine').value;const cmd=($('#na-cmd')&&$('#na-cmd').value||'').replace(/<name>/g,v);
+  api('/api/acctadd',{label:v,engine:(eng==='other'?'other':eng),cmd:cmd}).then(()=>{$('#na-label').value='';removedAccts.delete(v);setTimeout(renderAccounts,300);});}
+// "the current version": open a Terminal window and complete login there
+function acctLoginTerminal(l){api('/api/acctlogin',{label:l});}
+function copyVal(id){const el=document.getElementById(id);if(!el)return;el.select();el.setSelectionRange(0,99999);
+  try{navigator.clipboard.writeText(el.value);}catch(e){try{document.execCommand('copy');}catch(_){}}
+  const b=document.getElementById('cp-'+id);if(b){b.textContent='✓ copied';setTimeout(()=>{b.textContent='📋 copy';},1500);}}
+// In-page login: show the URL to copy/paste (no auto-open), then paste the code back to run on this Mac.
+async function acctLogin(l){
+  acctLoginActive=true; // freeze the live refresh so the URL panel isn't wiped
+  const box=document.getElementById('login-'+l);if(box)box.innerHTML='<div class="mini" style="margin-top:8px">starting login…</div>';
+  const r=await api('/api/login-start',{label:l}).then(x=>x.json()).catch(()=>({error:'failed'}));
+  if(!box)return;
+  if(r.error||!r.url){box.innerHTML='<div class="mini" style="margin-top:8px;color:var(--pause)">Could not start login: '+esc(r.error||'no URL')+'</div>';return;}
+  const lu='lu-'+l, lc='lc-'+l;
+  box.innerHTML='<div class="panel" style="margin-top:8px;background:#0f1830;border:1px solid #1d2b48">'
+    +'<div class="mini"><b>1.</b> Copy this URL, open it in your browser and authorize:</div>'
+    +'<div style="display:flex;gap:6px;margin:5px 0;flex-wrap:wrap"><input id="'+lu+'" readonly value="'+esc(r.url)+'" style="flex:1;min-width:200px"/>'
+    +'<button class="btn p" id="cp-'+lu+'" onclick="copyVal(\''+lu+'\')">📋 copy</button>'
+    +'<button class="btn" onclick="window.open(document.getElementById(\''+lu+'\').value,\'_blank\')">open</button></div>'
+    +(r.code?'<div class="mini">If asked for a code, enter: <b style="font-size:14px">'+esc(r.code)+'</b></div>':'')
+    +'<div class="mini" style="margin-top:8px"><b>2.</b> After authorizing it shows a code (or a localhost URL) — paste it here and run it on this Mac:</div>'
+    +'<div style="display:flex;gap:6px;margin-top:5px;flex-wrap:wrap"><input id="'+lc+'" placeholder="paste the code / callback URL here" style="flex:1;min-width:200px"/>'
+    +'<button class="btn p" onclick="acctLoginFinish(\''+l+'\')">▶ run on my computer</button></div>'
+    +'<div id="lr-'+l+'" class="mini" style="margin-top:6px"></div></div>';
+}
+async function acctLoginFinish(l){
+  const el=document.getElementById('lc-'+l);const code=el?el.value.trim():'';
+  const res=document.getElementById('lr-'+l);if(res)res.textContent='running…';
+  const f=await api('/api/login-finish',{label:l,code:code}).then(x=>x.json()).catch(()=>({result:'failed'}));
+  if(res)res.innerHTML='<span class="'+((/logged in|success|authenticated/i.test(f.result||''))?'free':'')+'">'+esc(f.result||'done')+'</span>';
+  acctLoginActive=false; // unfreeze live refresh
+  setTimeout(renderAccounts,1200);
+}
+
+/* ---------- controls ---------- */
+function toggleView(){view=view==='grouped'?'all':'grouped';localStorage.setItem('cw_view',view);render();}
+function setView(v){view=v;localStorage.setItem('cw_view',view);render();}
+function cyc(key,arr,url,field){const i=(arr.indexOf(S[key]||'')+1)%arr.length;const o={};o[field]=arr[i];api(url,o);}
+function setSched(n){const m=$('#m-'+n).value,v=($('#v-'+n).value||'').trim();const b={name:n,mode:m};if(m==='every')b.everyMinutes=v;else if(m==='at')b.atHHMM=v;api('/api/schedule',b);}
+function setTaskView(v){taskView=v;if(v==='all')allTicketsCache=null;render();}
+
+/* ---------- render ---------- */
+function render(){
+  const d=S,ags=d.agents||[];
+  // Remember where the owner is, so a browser REFRESH restores this exact page (team/ticket/settings/…)
+  // instead of dumping them back on the main dashboard.
+  try{localStorage.setItem('cw_nav',JSON.stringify({tab:tab,detail:detail,ticketKey:ticketKey,taskView:taskView}));}catch(_){}
+  // working count, de-flickered: a brief drop to 0 between batches is held for a few ticks
+  // (only shows 0 once it's genuinely been 0 for ~4s) so it doesn't jump 18→0→18.
+  // Use the SAME "isWorking" rule as the idle banner (running AND not finished/100%) so the header and the
+  // "fleet idle — 0 agents" banner can never disagree (an agent stuck in state=running at 100% is NOT working).
+  const running=ags.filter(a=>a.state==='running'&&!(a.progress&&(a.progress.done||(a.progress.pct||0)>=100))).length;
+  if(running>0){window._wkLast=running;window._wkZero=0;}
+  else{window._wkZero=(window._wkZero||0)+1;}
+  $('#wn').textContent=(running>0)?running:((window._wkZero>=4)?0:(window._wkLast||0));
+  // Don't overwrite a control the owner just changed: skip if it's focused OR was edited in the last ~5s.
+  // (Fixes the "saved → flips back to old value for a second → shows new" flicker: the SSE frame still
+  // carries the old value for a tick after the save, and was clobbering the input.)
+  const setSel=(id,val)=>{const e=$('#'+id);if(!e||document.activeElement===e)return;
+    if(e.dataset.edited&&(Date.now()-(+e.dataset.edited))<5000)return; e.value=val;};
+  setSel('bMode',d.boost?'true':'false');setSel('bEff',d.effort||'');setSel('bView',view);setSel('bScope',scope);setSel('bBatch',(d.batchSize==null?20:d.batchSize));setSel('bTQ',(d.perTeamQueue==null?20:d.perTeamQueue));
+  var pwi=document.getElementById('bPWI'); if(pwi){pwi.dataset.on=d.pauseWhenIdle?'1':'0';pwi.textContent=d.pauseWhenIdle?'⏳ will pause at session end (cancel)':'⏸ pause at session end';pwi.classList.toggle('p',!!d.pauseWhenIdle);}
+  // read-only per-account capacity on the header: run-at-once × sub, auto-derived from each speed.
+  (function(){const cap=$('#bCaps');if(!cap)return;
+    const acc=(d.accounts||[]).filter(a=>!a.paused&&a.loggedIn);
+    let tot=0;const parts=acc.map(a=>{const c=a.concEffective||0,f=a.fanEffective||0;tot+=c;const nm=(a.email||a.label).split('@')[0];
+      return '<span style="white-space:nowrap">'+esc(nm)+' <b style="color:var(--ok)">'+c+'</b>'+(f?'×'+f:'')+'</span>';});
+    cap.innerHTML='⚙️ runs at once: '+(parts.length?parts.join(' · ')+' <span style="opacity:.6">= '+tot+' total</span>':'no active account');})();
+  // Top banner: a usage bar per SELECTED account (multi-select), each with its name. Falls back to
+  // the default account usage when none picked.
+  const accs=d.accounts||[], bsel=d.bannerAccounts||[];
+  let bannerAcc = bsel.length?accs.filter(a=>bsel.includes(a.label)) : accs.filter(a=>a.label==='this-mac'||a.email==='colab.spt@gmail.com').slice(0,1);
+  if(!bannerAcc.length && accs.length) bannerAcc=accs.filter(a=>a.week>=0).slice(0,1);
+  // Banner shows the WEEKLY limit for each selected account (the long-term cap to watch), session after.
+  const bar=(a)=>{const wk=(a.week!=null&&a.week>=0)?a.week:-1;const hr=(a.hour!=null&&a.hour>=0)?a.hour:-1;
+    const col=wk<0?'#36486a':usageColor(wk,a.cap);
+    const nm=(a.email||a.label).split('@')[0];
+    return '<span title="'+esc(a.email||a.label)+'" style="display:inline-flex;align-items:center;gap:5px"><b style="font-size:10px;color:var(--mut);max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(nm)+'</b><span class="gb"><i style="width:'+(wk<0?0:Math.min(100,wk))+'%;background:'+col+'"></i></span><span style="font-size:11px">'+(wk<0?'n/a':'wk '+wk+'%')+(hr>=0?(' · 5h '+hr+'%'):'')+'</span></span>';};
+  $('#banner').innerHTML = bannerAcc.length? bannerAcc.map(bar).join(' <span style="opacity:.3">|</span> ') + (d.paceTarget>0?(' <span style="font-size:11px">🎯'+d.paceTarget+'%</span>'):'') : '–';
+  $('#clock').textContent=(d.survival?'🪫 survival ':(d.paused?'⏸ ':(d.boost?'⚡ ':'● ')))+(d.ts||'');
+  $('#clock').title=d.survival?'All Claude accounts hit their limit — running ONLY small, safe tasks (reports/tests) on a small codex model until the limit resets. A small model can make mistakes, so code changes + deploys are paused.':'';
+  // build/deploy bar
+  const bl=ags.filter(a=>a.state==='running'&&a.progress&&(a.progress.phase==='build'||a.progress.phase==='deploy'));
+  const bb=$('#buildbar');
+  if(bl.length){bb.classList.remove('hidden');bb.innerHTML=bl.map(a=>'<div class="brow"><span class="nm">'+(a.progress.phase==='deploy'?'🚀':'🔨')+' '+esc(a.name)+'</span><div class="bb"><i style="width:'+(a.progress.pct||0)+'%"></i></div><span>'+(a.progress.pct||0)+'%</span></div>').join('');}
+  else bb.classList.add('hidden');
+  // keep the overview sidebar on every tab; the team columns pack side by side next to it (min-width:0)
+  {const asideEl=document.getElementById('aside');asideEl.style.display='';const ae=document.activeElement;if(!(ae&&(ae.id==='sideChat')))renderAside();}
+  // LIVE pages: re-render on each tick so removals/counts/usage update instantly.
+  // Guard: don't wipe an open login panel or a field the owner is editing.
+  if(detail==='__accounts__'){
+    const ae=document.activeElement, editing=ae&&(ae.tagName==='INPUT'||ae.tagName==='SELECT')&&ae.closest&&ae.closest('#main');
+    if(!acctLoginActive&&!editing)renderAccounts();
+    return;
+  }
+  if(detail==='__needs__'){renderNeeds();return;}
+  if(detail==='__settings__'||detail==='__history__'||detail==='__human__'||detail==='__ticket__'||detail==='__chat__')return; // rendered by opener (don't wipe the live chat)
+  if(typeof detail==='string'&&detail.indexOf('team:')===0){renderTeam(detail.slice(5));return;}
+  if(detail){renderDetail(detail);return;}
+  if(tab==='agents')renderAgents();
+  else if(tab==='tasks'){const ae=document.activeElement;if(!(ae&&(ae.id==='alF'||ae.id==='alT')))renderTasks();} // don't reset the date picker mid-use
+  else if(tab==='devices'){const ae=document.activeElement;const editing=ae&&ae.id&&(ae.id.indexOf('df-')===0||ae.id.indexOf('ta-')===0||ae.id.indexOf('sd-')===0||ae.id.indexOf('sg-')===0);if(!editing)renderDevices();} // don't wipe device/test-account/simulator inputs
+  else if(tab==='mm'){if(!mmSite)renderMultimedia();} // don't reload the embedded marketing iframe every tick
+  else if(tab==='servers')renderServers();
+}
+
+function agentCard(a){
+  const p=a.progress||{},subs=p.subAgents||[],pct=Math.max(0,Math.min(100,p.pct||(a.state==='running'?8:0))),done=p.done||a.state==='done';
+  let sb='';
+  if((view==='all'||a.state==='running')&&subs.length)sb='<div style="margin-top:9px;border-top:1px solid #18233a;padding-top:7px">'+subs.map(s=>'<div class="subline"><b>'+esc(s.name||'sub')+'</b><span style="color:var(--acc)">'+(s.pct||0)+'% ✓'+(s.did||[]).length+' ☐'+(s.todo||[]).length+'</span></div>').join('')+'</div>';
+  else if(a.state==='running'&&!subs.length)sb='<div class="subline" style="margin-top:8px;color:var(--mut)">spawning agents…</div>';
+  return '<div class="card" onclick="openA(\''+a.name+'\')">'
+    +'<h3>'+esc(a.name)+' <span class="tagk">'+esc(a.kind)+'</span>'+(subs.length?'<span class="tags">👥 '+subs.length+'</span>':'')+'<span style="flex:1"></span><span class="bdg '+sc(a.state)+'">'+a.state+'</span></h3>'
+    +'<div class="pbar '+(done?'done':'')+'"><i style="width:'+pct+'%"></i></div>'
+    +'<div class="lines">'+(p.doneLine?'<div class="d">'+esc(p.doneLine)+'</div>':'')+(p.todoLine&&!done?'<div class="t">'+esc(p.todoLine)+'</div>':'')+(!p.doneLine&&!p.todoLine?'<span class="empty">'+(a.lastMsg?esc(a.lastMsg).slice(0,82):'idle')+'</span>':'')+'</div>'
+    +'<div class="meta"><span>'+pct+'%</span>'+(a.lastCost?'<span title="token cost of the last run (not real $ — flat-fee plan)">~$'+a.lastCost.toFixed(2)+' tokens</span>':'')+'<span>'+esc(a.schedule)+'</span>'+(a.pid?'<span>pid '+a.pid+'</span>':'')+'</div>'
+    +'<div class="acts" onclick="event.stopPropagation()"><button class="btn p" onclick="api(\'/api/forcerun\',{name:\''+a.name+'\'})">▶ Run</button>'
+    +'<button class="btn" onclick="api(\'/api/pause\',{name:\''+a.name+'\'})">⏸</button><button class="btn" onclick="resumeAgent(\''+a.name+'\')">▶</button><button class="btn" onclick="api(\'/api/stop\',{name:\''+a.name+'\'})">⏹</button></div>'
+    +'<div class="sch" onclick="event.stopPropagation()"><select id="m-'+a.name+'"><option value="every">every</option><option value="at">at</option><option value="manual">manual</option></select><input id="v-'+a.name+'" placeholder="120 / 03:30"/><button class="btn" onclick="setSched(\''+a.name+'\')">save</button></div>'
+    +sb+'</div>';
+}
+// the functional teams (Workflow v2) — drives the column layout + per-team start/stop.
+// NOTE: model is decided PER ACCOUNT (Opus by default, Sonnet only on accounts whose
+// "use Sonnet" toggle is on) — the scheduler does NOT apply a per-team model. So every
+// team's agents run Opus unless the account running them opted into Sonnet. The badge
+// below therefore shows the real default (Opus); see each account card for its actual model.
+const TEAMS=[
+  {name:'🧭 Triage',model:'Opus',agents:['planner','jira-poll'],lane:'triage'},
+  {name:'💻 Programming',model:'Opus',agents:['app','backend','uiux'],lane:'programming'},
+  {name:'🔧 Hardware',model:'Opus',agents:['firmware'],lane:'hardware'},
+  {name:'🔍 Review',model:'Opus',agents:['code-review','security-review'],lane:'review'},
+  {name:'🧪 Testing',model:'Opus',agents:['qa','e2e-test','visual-test','hardware-test','random-tester'],lane:'testing'},
+  {name:'🚀 Ops',model:'Opus',agents:['deploy','release'],lane:'ops'},
+  {name:'🩺 Monitoring',model:'Opus',agents:['inbox','sentry-catch','sentry-clean','reliability','scenario-gen','multimedia'],lane:'monitoring'},
+];
+// per-team queued TASK LIST (the actual tickets in this team's lane) — shown inside the team, above functions
+function teamTaskList(t){
+  if(!t.lane) return '';
+  const tasks=(S.teamTasks&&S.teamTasks[t.lane])||[];
+  const head='<div class="mini" style="font-weight:700;color:#fbbf24;margin:6px 0 3px">📋 '+tasks.length+' task'+(tasks.length===1?'':'s')+' in queue</div>';
+  if(!tasks.length) return head+'<div class="mini" style="color:var(--mut)">— empty (use ⬇ pull / the team pull button to fetch backlog)</div>';
+  var tid='tt:'+t.lane;
+  return head+tasks.slice(0,_shown(tid)).map(function(x){return '<div class="mini" style="display:flex;gap:6px;align-items:center;overflow:hidden;padding:1px 0" title="'+esc(x.key)+': '+esc(x.summary||'')+'" onclick="event.stopPropagation();openTicket(\''+esc(x.key)+'\')"><b style="color:#fbbf24;cursor:pointer;flex:none;white-space:nowrap">'+esc(x.key)+'</b><span style="color:var(--tx);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc((x.summary||'').slice(0,42))+'</span></div>';}).join('')
+    +moreBtn(tid,tasks.length);
+}
+const MODEL_COL={Opus:'#f87171',Sonnet:'#38bdf8',Haiku:'#a78bfa'};
+function teamCtl(agents,action){api('/api/team',{agents:agents.join(','),action:action}).then(()=>{toast('team '+(action==='pause'?'paused (finishing)':'started'));});}
+// pause a team FAST: stop new + kill its running agents now (safe — they resume their session next run)
+function teamCtlFast(agents){api('/api/team',{agents:agents.join(','),action:'pause'});agents.forEach(function(n){api('/api/stop',{name:n});});toast('team paused fast (running killed; resumable)');}
+function openTeam(name){detail='team:'+name;render();}
+// real per-team model badge: the DISTINCT models this team's agents actually run on (from the live
+// jobModels map the server sends), e.g. "Opus", "Sonnet", or "Opus·Sonnet" — not a hard-coded label.
+function teamModel(t){const jm=S.jobModels||{};const s=[...new Set((t.agents||[]).map(n=>jm[n]).filter(Boolean))];return s.length?s.join('·'):(t.model||'Opus');}
+// "run on…" account picker: which runner the next run uses ("" = any free account)
+function runAcct(){const e=document.getElementById('runacct');return e?e.value:'';}
+function acctOptions(){const al=S.accountList||[];return '<option value="">auto · any free account</option>'+al.map(function(a){return '<option value="'+esc(a.label)+'"'+(a.paused?' disabled':'')+'>'+esc(a.label)+' · '+esc(a.engine||'claude')+(a.useSonnet?' · Sonnet':'')+(a.paused?' · paused':'')+'</option>';}).join('');}
+// forceRun: POST /api/forcerun → {started,reason,agent,capBlock,canForce}. mode '' | 'temp' | 'force'.
+function forceRun(name,account,mode){
+  return fetch('/api/forcerun',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',
+      body:JSON.stringify({name:name,account:account||'',mode:mode||''})})
+    .then(r=>r.status===401?(location.reload(),{started:false,reason:'session expired',agent:name}):r.json())
+    .catch(()=>({started:false,reason:'request failed (network)',agent:name}));
+}
+// temp-worker badge: "+N" in yellow for temporary over-cap workers (global, or within a set of agents).
+function tempBadge(scope){var ta=S.tempAgents||[];var t=scope?ta.filter(n=>scope.indexOf(n)>=0).length:ta.length;
+  return t>0?' <span style="color:#fbbf24;font-weight:700" title="temporary over-cap worker(s) — released when their run ends">+'+t+'</span>':'';}
+// hardware-blocker note + "ignore for next batch" button. Low disk is a HARD floor (not ignorable);
+// CPU/memory/swap pressure can be ignored for the next batch of runs.
+// keep launching new runs even though the Mac is under load: arms a bypass so the agents the fleet
+// PAUSED (because of CPU/memory pressure) start anyway, within a few seconds. n omitted = one batch.
+function ignoreHW(){api('/api/resource-ignore',{}).then(r=>r.json()).then(d=>{
+  S.hwIgnore=(d&&d.ignoreLeft!=null)?d.ignoreLeft:-1; // sticky (-1): stays ON until you click "protect Mac again"
+  refreshNow();          // flip the note to green immediately, before the held runs actually start
+  toast('▶ Running anyway — ignoring Mac load until you turn it off (held runs launch within a few seconds)');
+}).catch(()=>{});}
+var _resLvlAt=0,_resLvlVal=null,_resLvlName='';
+function setResLevel(d){api('/api/resource-level',{delta:String(d)}).then(r=>r.json()).then(x=>{if(x&&x.level){_resLvlVal=x.level;_resLvlName=x.name;_resLvlAt=Date.now();S.resourceLevel=x.level;S.resourceLevelName=x.name;toast('⚙️ Mac usage level → '+x.level+' · '+x.name);}setTimeout(refreshNow,300);}).catch(()=>{});}
+function hwNote(){
+  var hw=S.hwBlock||'', disk=S.diskBlock||'', ig=S.hwIgnore||0;
+  if(disk) return '<span class="gchip" style="border-color:var(--err);color:var(--err)" title="HARD limit — low disk can hang the Mac, so the fleet won’t start new runs and this can’t be overridden. Free up disk space.">🛑 low disk — new runs paused (free up space)</span>';
+  if(ig!==0) return '<span class="gchip" style="border-color:#34d399;color:#34d399" title="Mac-load limit is OFF — the fleet keeps launching new runs even under CPU/memory pressure. This stays on (no re-prompting) until you click ‘protect Mac again’.">▶ running anyway — Mac-load limit OFF'+(ig>0?' ('+ig+' left)':'')+' <button onclick="event.stopPropagation();api(\'/api/resource-ignore\',{n:\'0\'}).then(()=>{S.hwIgnore=0;refreshNow();})" style="margin-left:6px;background:#3a2a2a;color:#fde0e0;border:0;padding:1px 6px;border-radius:5px;cursor:pointer">protect Mac again</button></span>';
+  if(hw) return '<span class="gchip" style="border-color:#fbbf24;color:#fbbf24" title="The Mac is under hardware pressure ('+esc(hw)+'), so the fleet PAUSED starting NEW runs to protect it. Agents already running are NOT stopped. Click ‘Run anyway’ to launch the paused runs despite the load. (Low disk is the only thing that can’t be overridden.)">⚠ Mac under heavy load ('+esc(hw)+') — new runs paused <button onclick="event.stopPropagation();ignoreHW()" style="margin-left:6px;background:#fbbf24;color:#1a0c0c;border:0;padding:1px 7px;border-radius:5px;cursor:pointer;font-weight:700">▶ Run anyway</button></span>';
+  return '';
+}
+// blockNote: a STICKY banner explaining a blocker, with one button PER option (e.g. temp worker / run
+// anyway) + Dismiss, so the owner reads the reason and chooses.
+let _noteCbs={};
+function _dismissNote(){var n=document.getElementById('cwnote');if(n)n.remove();_noteCbs={};}
+function _noteAct(k){var cb=_noteCbs[k];_dismissNote();if(cb)cb();}
+function blockNote(msg,opts){
+  opts=opts||[];_noteCbs={};
+  let n=document.getElementById('cwnote');
+  if(!n){n=document.createElement('div');n.id='cwnote';
+    n.style.cssText='position:fixed;left:50%;top:14px;transform:translateX(-50%);z-index:9999;max-width:92vw;'
+      +'background:#2a1416;border:1px solid var(--err,#f87171);color:#fde0e0;padding:12px 15px;border-radius:10px;'
+      +'box-shadow:0 8px 28px rgba(0,0,0,.5);font-size:12px;white-space:pre-wrap;line-height:1.5';
+    document.body.appendChild(n);}
+  var btns='<div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">';
+  opts.forEach(function(o,i){_noteCbs['b'+i]=o.cb;
+    btns+='<button onclick="_noteAct(\'b'+i+'\')" style="background:'+(o.col||'#3b82f6')+';color:#0b1220;border:0;padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:700">'+o.label+'</button>';});
+  btns+='<button onclick="_dismissNote()" style="background:#3a2a2a;color:#fde0e0;border:0;padding:6px 12px;border-radius:7px;cursor:pointer">✕ Dismiss</button></div>';
+  n.innerHTML='<b style="color:#fca5a5">⚠ Blocked — nothing started</b>\n'+msg+(opts.length?'\n\n<span style="opacity:.6;font-size:11px">Choose how to proceed:</span>':'')+btns;
+}
+// summarise blockers + offer the right action: a TEMPORARY worker for a fleet-cap block, or Run anyway
+// for a policy block. Re-runs only the blocked agents in the chosen mode.
+function showBlockers(blocked,ac,okMsg){
+  if(!blocked.length)return;
+  var names=blocked.map(b=>b.agent);
+  var cap=blocked.some(b=>b.capBlock), forceable=blocked.some(b=>b.canForce);
+  // CAPACITY blockers (fleet full / every account at its limit) are all the SAME thing — collapse them
+  // into ONE short line with the per-account counts, instead of repeating it for every agent × account.
+  var isCap=function(r){return /max concurrent|concurrency limit|no account is free|fleet is full/i.test(r||'');};
+  var capN=blocked.filter(b=>isCap(b.reason)), other=blocked.filter(b=>!isCap(b.reason));
+  var lines=[];
+  if(capN.length){
+    var accs=(S.accounts||[]).filter(a=>!a.duplicate);
+    var busy=accs.filter(a=>(a.running||0)>0).map(a=>((a.email||a.label||'acct').split('@')[0])+' '+(a.running||0)+'/'+(a.concEffective||a.running||0));
+    var free=accs.filter(a=>!a.paused&&a.loggedIn!==false&&(a.running||0)<(a.concEffective||0)).length;
+    lines.push('🚦 Fleet is full — '+capN.length+' run(s) waiting · all accounts at their limit ('+(busy.join(' · ')||'—')+').');
+    lines.push(free>0?'A slot just freed — try again.':'They start automatically as slots free. To push more now: raise an account’s “run at once”, add a temporary worker, or pause something.');
+  }
+  // only genuinely-different blockers get their own line (logged out, paused, no such agent, …)
+  other.forEach(function(b){lines.push('• '+(b.agent||'agent')+': '+(b.reason||'blocked'));});
+  var opts=[];
+  if(cap)opts.push({label:'➕ Add temporary worker'+(names.length>1?'s ('+names.length+')':''),col:'#fbbf24',
+    cb:function(){_runMany(names,ac,'temp',okMsg);}});
+  if(forceable)opts.push({label:'⚡ Run anyway',col:'#f87171',cb:function(){_runMany(names,ac,'force',okMsg);}});
+  blockNote(lines.join('\n'),opts);
+}
+// run many agents in a given mode; on blockers, show the banner with temp/force options.
+function _runMany(agents,ac,mode,okMsg){
+  return Promise.all(agents.map(n=>forceRun(n,ac,mode))).then(function(res){
+    var started=res.filter(r=>r&&r.started).length, blocked=res.filter(r=>r&&!r.started);
+    if(started)toast((okMsg||'▶ started')+' '+started+(mode==='temp'?' (temporary)':'')+' agent'+(started>1?'s':'')+(ac?' on '+ac:''));
+    showBlockers(blocked,ac,okMsg);
+    setTimeout(refreshNow,600);
+  });
+}
+function runTeamTasks(lane,agents){_runMany(agents,runAcct(),'','▶ started');}
+function runOne(name){_runMany([name],runAcct(),'','▶ started');}
+// ▶ batch: run ONE batch (~batchSize related tickets) to the end + deploy, then PAUSE there.
+function runBatch(name){var ac=runAcct(),n=(S.batchSize||10);
+  fetch('/api/forcerun',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',
+      body:JSON.stringify({name:name,account:ac,batch:'1'})})
+    .then(r=>r.json()).then(function(r){
+      if(r&&r.started)toast('▶ '+name+': running ONE batch (~'+n+' related tickets) to the end, then it pauses');
+      else showBlockers([r],ac);
+      setTimeout(refreshNow,600);
+    }).catch(()=>{});}
+function runTeamBatch(agents){var ac=runAcct(),n=(S.batchSize||10);
+  Promise.all(agents.map(function(nm){return fetch('/api/forcerun',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({name:nm,account:ac,batch:'1'})}).then(r=>r.json()).catch(()=>({started:false,agent:nm}));}))
+    .then(function(res){var s=res.filter(r=>r&&r.started).length;if(s)toast('▶ '+s+' agent(s): one batch (~'+n+' each) to the end, then pause');showBlockers(res.filter(r=>r&&!r.started),ac);setTimeout(refreshNow,600);});}
+// WHOLE-PAGE batch: one batch across ANY/ALL teams (each agent grabs its closest ~N related tickets,
+// runs to the end + deploy, then pauses). "just get a batch and finish it to end" across the fleet.
+function runGlobalBatch(){
+  var all=[...new Set((TEAMS||[]).flatMap(function(t){return t.agents||[];}))];
+  if(!all.length){toast('no agents');return;}
+  runTeamBatch(all);}
+// run ONE task now: activate it (unblock + prioritise) + force-run its team so an agent picks it up
+function runTaskNow(key,agents){var ac=runAcct();
+  api('/api/activate',{key:key});
+  _runMany(agents||[],ac,'','▶ '+key+' running ·');}
+function _isBug(s){return /(\[bug\]|\bbug\b|sentry|crash|regression|\bcritical\b|hotfix|\bP0\b)/i.test(s||'');}
+function _tkOf(a){const p=a.progress||{};return [...new Set(([p.doneLine,p.todoLine,p.doing,(p.did||[]).join(' '),(p.todo||[]).join(' '),a.lastMsg].join(' ').match(/SCRUM-\d+/g))||[])];}
+// FULL TEAM PAGE — more data + control: start/pause/fast, pull, run all, per-agent + per-task run, bug flags
+function renderTeam(name){
+  const t=TEAMS.find(x=>x.name===name); if(!t){goTab('agents');return;}
+  const all=S.agents||[]; const ags=t.agents.map(n=>all.find(a=>a.name===n)).filter(Boolean);
+  const isW=a=>a.state==='running'&&!(a.progress&&(a.progress.done||(a.progress.pct||0)>=100));
+  const working=ags.filter(isW).length;
+  const tIn=(S.tempAgents||[]).filter(n=>t.agents.indexOf(n)>=0).length; // temp over-cap workers in this team
+  const normW=Math.max(0,working-tIn);
+  const workTxt=working?(normW+(tIn?' <span style="color:#fbbf24;font-weight:700" title="temporary over-cap worker(s) — released when their run ends">+'+tIn+'</span>':'')+' working'):'idle';
+  const tasks=(S.teamTasks&&t.lane&&S.teamTasks[t.lane])||[];
+  const bugs=tasks.filter(x=>_isBug(x.summary)).length;
+  const aj=JSON.stringify(t.agents).replace(/"/g,'&quot;');
+  let h='<span class="back" onclick="goTab(\'agents\')">← back</span>'
+    +'<h2 class="sec" style="font-size:17px;color:var(--tx);text-transform:none">'+esc(t.name)+' team '
+      +'<span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:'+(working?'var(--ok)':'var(--mut)')+(working?';box-shadow:0 0 6px var(--ok)':'')+'"></span> '
+      +'<span class="mini" style="color:'+(working?'var(--ok)':'var(--mut)')+'">'+workTxt+' · '+ags.length+' agents · '+tasks.length+' queued'+(bugs?' · '+bugs+' 🐞':'')+'</span>'
+      +' <span class="tagk" title="models this team\'s agents actually run on (per-job). An account set to &quot;use Sonnet&quot; overrides to Sonnet at run time.">'+esc(teamModel(t))+'</span></h2>'
+    +(hwNote()?'<div style="margin:2px 0 6px">'+hwNote()+'</div>':'')
+    +'<div class="acts" style="margin:8px 0;flex-wrap:wrap;gap:6px;align-items:center">'
+      +'<label class="mini" style="color:var(--mut)">run on <select id="runacct" class="btn" style="padding:2px 4px" title="which account the run buttons should use">'+acctOptions()+'</select></label>'
+      +'<button class="btn p" onclick="runTeamTasks(\''+(t.lane||'')+'\','+aj+')">▶ start / run all queued</button>'
+      +'<button class="btn" title="each agent runs ONE batch (~'+(S.batchSize||10)+' related tickets) to the end + deploy, then pauses" onclick="runTeamBatch('+aj+')">▶ run a batch each</button>'
+      +'<button class="btn" style="color:var(--pause)" onclick="teamCtl(['+aj+'],\'pause\')">⏸ pause (finish jobs)</button>'
+      +'<button class="btn" style="color:var(--err)" onclick="teamCtlFast(['+aj+'])">⏸ fast pause (kill)</button>'
+      +(t.lane?'<button class="btn" onclick="api(\'/api/teampull\',{team:\''+t.lane+'\'}).then(()=>toast(\'⬇ pulled backlog\'))">⬇ pull more backlog</button>':'')
+      +'</div>'
+    +'<h3 class="sec" style="font-size:13px;margin-top:8px">🤖 Agents</h3><div class="grid">'
+    +ags.map(function(a){const p=a.progress||{};const w=isW(a);const done=a.state==='done'||p.done||(p.pct||0)>=100;const tks=_tkOf(a);
+      return '<div class="card"><h3>'+esc(a.name)+'<span style="flex:1"></span><span class="mini" style="color:'+(w?'var(--run)':done?'var(--ok)':'var(--mut)')+'">'+(w?(p.pct||0)+'%':done?'✓ done':esc(a.state||'idle'))+'</span></h3>'
+        +'<div class="mini" style="color:var(--mut);overflow:hidden;text-overflow:ellipsis">'+esc(p.todoLine||p.doneLine||a.lastMsg||'idle')+'</div>'
+        +(tks.length?'<div class="mini" style="margin-top:4px">🎫 '+tks.map(function(k){return '<b style="color:#fbbf24;cursor:pointer" onclick="openTicket(\''+k+'\')">'+k+'</b>';}).join(', ')+'</div>':'')
+        +'<div class="acts" style="margin-top:7px"><button class="btn" onclick="openA(\''+a.name+'\')">details</button>'
+        +(a.state==='paused'?'<button class="btn p" onclick="resumeAgent(\''+a.name+'\')">▶ resume</button>':'<button class="btn" style="color:var(--pause)" onclick="api(\'/api/pause\',{name:\''+a.name+'\'})">⏸ pause</button>')
+        +'<button class="btn p" onclick="runOne(\''+a.name+'\')">▶ run</button>'
+        +'<button class="btn" title="run ONE batch (~'+(S.batchSize||10)+' related tickets) to the end + deploy, then pause" onclick="runBatch(\''+a.name+'\')">▶ batch</button></div></div>';}).join('')+'</div>'
+    +'<h3 class="sec" style="font-size:13px;margin-top:12px">📋 Queued tasks ('+tasks.length+')</h3>'
+    +(tasks.length?'<div class="grid">'+tasks.slice(0,_shown('tp:'+t.lane)).map(function(x){const bug=_isBug(x.summary);
+        return '<div class="card"'+(bug?' style="border-color:var(--err)"':'')+'><div style="display:flex;gap:6px;align-items:center"><b style="color:#fbbf24;cursor:pointer" onclick="openTicket(\''+esc(x.key)+'\')">'+esc(x.key)+'</b>'+(bug?'<span class="bdg" style="background:var(--err);color:#fff">🐞 bug</span>':'<span class="mini" style="color:var(--ok)">task</span>')+'<span style="flex:1"></span><button class="btn p" title="activate + run this task now (force-runs the team)" onclick="runTaskNow(\''+esc(x.key)+'\','+aj+')">▶ run</button></div>'
+          +'<div class="mini" style="color:var(--tx);margin-top:4px">'+esc(x.summary||'')+'</div></div>';}).join('')+'</div>'+moreBtn('tp:'+t.lane,tasks.length)
+      :'<div class="empty">No queued tasks — use ⬇ pull more backlog (only To-Do tickets with this team\'s area label are pulled).</div>');
+  $('#main').innerHTML=h;
+}
+// 📥 Run queue (under Triage): pull Jira To-Do tickets in, then start them all → Programming
+function queuePanel(){const q=S.runQueue||[];
+  return '<div style="margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:8px" onclick="event.stopPropagation()">'
+    +'<div class="mini" style="font-weight:600;display:flex;align-items:center;gap:5px">📥 Run queue · '+q.length
+      +'<span style="flex:1"></span>'
+      +'<button class="btn" style="font-size:9px;padding:1px 6px" onclick="qPull()" title="pull the latest To-Do tickets from Jira into the queue">⬇ pull</button>'
+      +(q.length?'<button class="btn p" style="font-size:9px;padding:1px 6px" onclick="qStart()" title="send all queued tickets to Programming">▶ start all</button>':'')+'</div>'
+    +(q.length?q.map(i=>'<div class="mini" style="display:flex;gap:5px;align-items:center;padding:1px 0"><b style="color:#fbbf24">'+esc(i.key)+'</b><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(i.summary||'').slice(0,40)+'</span><span onclick="qRemove(\''+esc(i.key)+'\')" style="cursor:pointer;color:var(--pause)">✕</span></div>').join(''):'<div class="mini" style="color:var(--mut)">empty — tap ⬇ pull to fetch the latest Jira tasks</div>')
+    +'</div>';
+}
+function qPull(){const n=prompt('How many To-Do tasks to pull from Jira?','10');if(n===null)return;api('/api/queue/pull',{n:n||'10'}).then(r=>r.json()).then(d=>{toast('pulled '+(d.added||0)+' task(s)');renderAgents();});}
+function qStart(){api('/api/queue/start',{}).then(r=>r.json()).then(d=>{toast('▶ started '+(d.started||0)+' → Programming');renderAgents();});}
+function qRemove(k){api('/api/queue/remove',{key:k}).then(()=>renderAgents());}
+// focus on bugs/errors: pause the non-priority agents (content/mapping/exploratory); resume anytime
+function focusBugs(on){const extras=['multimedia','planner','app-map','scenario-gen','random-tester'];
+  api('/api/team',{agents:extras.join(','),action:on?'pause':'resume'}).then(()=>{toast(on?'🐞 bug focus — paused '+extras.length+' non-priority agents (bug/error/test/deploy keep running)':'▶ resumed the non-priority agents');});}
+function teamCard(a){const p=a.progress||{},run=a.state==='running',pa=a.state==='paused',rawdone=a.state==='done'||p.done,err=a.state==='error';
+  if(rawdone)_doneSeen[a.name]=Date.now(); // remember the moment it finished
+  // DWELL: keep showing "✓ done 100%" for ~60s after completion (even once it's gone idle) so you can SEE
+  // the task finish before it resets to 0 and the work moves to the next team.
+  const justDone=!run&&!pa&&!err&&!rawdone&&_doneSeen[a.name]&&(Date.now()-_doneSeen[a.name]<60000);
+  const done=rawdone||justDone;
+  const pct=done?100:(err?100:Math.max(0,Math.min(100,p.pct||(run?8:0))));
+  const subs=(p.subAgents||[]).length;
+  // tickets this agent is working on — extracted from everything it reported (did/doing/todo/lines/msg)
+  const tks=[...new Set(([p.doneLine,p.todoLine,p.doing,(p.did||[]).join(' '),(p.todo||[]).join(' '),(p.fail||[]).join(' '),a.lastMsg].join(' ').match(/SCRUM-\d+/g))||[])];
+  const dot=run?'var(--run)':pa?'var(--pause)':(done?'var(--ok)':(err?'var(--err)':'var(--mut)'));
+  const barcol=done?'var(--ok)':err?'var(--err)':run?'var(--run)':pa?'var(--pause)':'var(--line)';
+  const line=p.doneLine?esc(p.doneLine):(p.todoLine?esc(p.todoLine):(a.lastMsg?esc(a.lastMsg).slice(0,70):'idle'));
+  return '<div class="tcard" onclick="openA(\''+a.name+'\')"><div class="tcr"><span class="tdot" style="background:'+dot+'"></span><b>'+esc(a.name)+'</b>'+(subs?'<span class="tags">👥'+subs+'</span>':'')+'<span style="flex:1"></span>'
+    +'<span class="mini" style="color:'+barcol+';font-weight:600">'+(done?(justDone?'✓ done':'✓ 100%'):(run?pct+'%':(pa?'paused':(err?'error':'idle'))))+'</span>'
+    +'<button class="btn" style="font-size:9px;padding:1px 5px;margin-left:5px;color:'+(pa?'var(--ok)':'var(--pause)')+'" title="'+(pa?'resume':'pause')+' this agent" onclick="event.stopPropagation();'+(pa?'resumeAgent(\''+a.name+'\')':'api(\'/api/pause\',{name:\''+a.name+'\'}).then(()=>setTimeout(renderAgents,400))')+'">'+(pa?'▶':'⏸')+'</button></div>'
+    +'<div class="pbar '+(done?'done':'')+'" style="margin:4px 0 3px"><i style="width:'+pct+'%;background:'+barcol+'"></i></div>'
+    +'<div class="mini" style="color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+line+'</div>'
+    +(tks.length?'<div class="mini" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">🎫 '+tks.slice(0,6).map(function(k){return '<b style="color:#fbbf24;cursor:pointer" onclick="event.stopPropagation();openTicket(\''+k+'\')">'+k+'</b>';}).join(', ')+(tks.length>6?' +'+(tks.length-6):'')+'</div>':'')
+    +'</div>';
+}
+// Each team = a ⚡ Functions sub-team (0-token deterministic functions) + a 🤖 AI sub-team (token agents).
+const FN_BY_TEAM={'🧪 Testing':['citests'],'🩺 Monitoring':['sentry'],'🧭 Triage':['pump']};
+const FN_META={
+  citests:{label:'🧪 Tests (CI)',run:'citests',sched:'build/deploy + 2×/day',replaces:'qa · e2e-test · visual-test'},
+  sentry:{label:'🔍 Sentry watch',run:'sentry',sched:'every 30 min',replaces:'sentry-catch · sentry-clean · reliability'},
+  pump:{label:'⚙️ Backlog pump',run:'',sched:'every 2 min',replaces:''}
+};
+function fnCard(key){
+  const m=FN_META[key]||{label:key},r=fnRuns[key];
+  const col=r?(r.ok?'#34d399':'#f87171'):'var(--mut)';
+  const line=r?('▶ '+String(r.at||'').replace('T',' ').slice(5,16)+' · '+esc(r.summary||'')+' · '+(r.runs||0)+' runs')
+              :'no runs recorded yet';
+  const btn=m.run?'<button class="btn" style="font-size:9px;padding:1px 6px;margin-left:5px" onclick="event.stopPropagation();runFn(\''+m.run+'\',\''+esc(m.label)+'\')" title="run now (0 tokens)">▶ run</button>':'';
+  return '<div class="tcard" style="border-left:2px solid '+col+'"><div class="tcr"><span>⚡</span><b>'+esc(m.label)+'</b><span style="flex:1"></span><span class="mini" style="color:var(--mut)">'+esc(m.sched||'')+'</span>'+btn+'</div>'
+    +'<div class="mini" style="color:'+col+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+line+'</div>'
+    +(m.replaces?'<div class="mini" style="color:var(--mut)">replaced agents: '+esc(m.replaces)+'</div>':'')+'</div>';
+}
+function functionsSubteam(t){
+  const keys=FN_BY_TEAM[t.name]||[];
+  let body=keys.length?keys.map(fnCard).join(''):'<div class="mini" style="color:var(--mut)">— none (all AI)</div>';
+  if(t.name.indexOf('Triage')>=0)body+=queuePanel();
+  return '<div style="margin-top:8px"><div class="mini" style="font-weight:700;color:#34d399;margin-bottom:3px" title="deterministic functions — 0 tokens">⚡ Functions · 0-token</div>'+body+'</div>';
+}
+function renderAgents(){
+  const d=S,ags=d.agents||[],tk=d.tickets||{},byName={};ags.forEach(a=>byName[a.name]=a);
+  // an agent is "working" only if RUNNING and NOT already done/100% (a finished agent lingering as
+  // running must not show as a worker — fixes Triage/Monitoring showing ✓100% agents as working).
+  const isWorking=a=>a.state==='running'&&!(a.progress&&(a.progress.done||(a.progress.pct||0)>=100));
+  const running=ags.filter(isWorking).length;
+  const tempTot=(d.tempAgents||[]).length, normRun=Math.max(0,running-tempTot); // split normal vs temporary over-cap
+  const orq=(d.ownerRequests||[]).length, bugs=tk.bugsCnt||0, downSrv=(d.servers||[]).filter(s=>!s.up).length;
+  // AT-A-GLANCE bar (colours only when something needs you)
+  const chip=(lbl,val,col,on)=>'<span class="gchip"'+(on?' style="border-color:'+col+';color:'+col+'"':'')+'>'+lbl+' <b>'+val+'</b></span>';
+  // ATTENTION-ONLY top bar: the working pulse + a hardware blocker + ONLY the counters that need you.
+  // Informational/zero counts are hidden (they live on the Backlog tab + team columns); global controls
+  // and 0-token functions live behind ⚙ controls — collapsed by default, so NO control is removed.
+  const attChips=(bugs>0?chip('🐞 bugs',bugs,'var(--err)',true):'')
+    +(orq>0?chip('🔑 needs you',orq,'var(--warn)',true):'')
+    +(downSrv>0?chip('🖥 down',downSrv,'var(--err)',true):'');
+  const hw=hwNote();
+  const allClear=!attChips&&!hw;
+  const glance='<div class="glance">'
+    +chip('⚡ working',normRun+tempBadge(),'var(--ok)',running>0)
+    +attChips+(hw||'')
+    +(allClear?'<span class="gchip" style="opacity:.55;border-color:var(--ok);color:var(--ok)" title="nothing needs your attention">✓ all clear</span>':'')
+    +'<span style="flex:1"></span>'
+    +'<button class="btn p" onclick="runGlobalBatch()" title="Run ONE batch across ANY/ALL teams — each agent grabs its ~'+(d.batchSize||10)+' closest related tickets, takes them to the end + deploy to staging, then pauses. Mixes teams; just get a batch done." style="font-size:11px">▶ batch (all teams)</button>'
+    +'<button class="btn" onclick="toggleControls()" title="show/hide fleet controls + 0-token functions" style="font-size:11px">⚙ controls</button>'
+    +'</div>'
+    +'<div id="cwctrls" class="glance" style="display:'+(_ctrlsOpen?'flex':'none')+';margin-top:-8px">'
+      +'<button class="btn" title="pause the non-priority agents (multimedia, planner, app-map, scenario-gen, random-tester) so the fleet focuses on bugs + errors. Resume them anytime." onclick="focusBugs(true)" style="font-size:11px">🐞 Focus bugs (pause extras)</button>'
+      +'<button class="btn" title="resume the non-priority agents" onclick="focusBugs(false)" style="font-size:11px">▶ resume extras</button>'
+      +'<span class="gchip">in-flight cap <input id="bInflight" type="number" min="1" max="20" value="'+(d.inFlightCap||7)+'" onchange="api(\'/api/inflight\',{n:this.value})" style="width:42px"/></span>'
+      +'<span class="gchip" style="opacity:.7" title="0-token functions that replaced agents — also run on a schedule">⚡ functions:</span>'
+      +'<button class="btn" title="Run the 0-token Sentry check now (also auto-runs every 30 min). Files a Highest-priority ticket for any new production error." onclick="runFn(\'sentry\',\'Sentry check\')" style="font-size:11px">🔍 Sentry check</button>'
+      +'<button class="btn" title="Run the 0-token test suite now (also runs on every build/deploy + 2x/day). Files a ticket for any failure." onclick="runFn(\'citests\',\'Run tests\')" style="font-size:11px">🧪 Run tests</button>'
+    +'</div>';
+  // WHY-IDLE banner: when nothing is running, say why (paused / paced / maxed) so 0-agents is never a mystery
+  let idleWarn='';
+  if(running===0){const ac=(d.accounts||[]).filter(a=>!a.duplicate);
+    const active=ac.filter(a=>!a.paused&&a.loggedIn!==false);
+    const capped=a=>(a.cap>0&&a.week>=0&&a.week>=a.cap);
+    const usable=active.filter(a=>!capped(a));
+    let why;
+    if(active.length===0) why='all accounts are paused or logged out — open 🔑 Accounts and resume one.';
+    else if(usable.length===0) why='the active account'+(active.length>1?'s are':' is')+' at the weekly cap ('+active.map(a=>(a.email||a.label).split('@')[0]+' '+(a.week||0)+'%').join(', ')+') — it resumes when the cap resets, or add/resume another account.';
+    else why='no queued work right now, or work is held by pacing / high Mac load — this is NOT an account-pause issue.';
+    idleWarn='<div class="glance" style="margin-top:-6px"><span class="gchip" style="border-color:var(--warn);color:var(--warn)">⚠ fleet idle — 0 agents. '+why+'</span></div>';}
+  // ACCOUNT USAGE GLANCE — WEEKLY limit bar per account (the long-term cap)
+  const accs=(d.accounts||[]).filter(a=>a.loggedIn&&!a.paused&&(a.week>=0)&&!a.duplicate);
+  const accGlance=accs.length?('<div class="glance" style="margin-top:-6px">'+accs.map(a=>{const wk=a.week>=0?a.week:0;const col=usageColor(wk,a.cap);const nm=(a.email||a.label).split('@')[0];
+    return '<span class="gchip" title="'+esc(a.email||a.label)+' · weekly limit" style="display:inline-flex;align-items:center;gap:6px"><b style="font-size:10px;color:var(--mut)">'+esc(nm)+'</b><span class="gb" style="width:64px"><i style="width:'+Math.min(100,wk)+'%;background:'+col+'"></i></span><span style="color:'+col+';font-size:11px">wk '+wk+'%</span></span>';}).join('')+'</div>'):'';
+  // VIEW: ALL → one flat list (working w/ progress → done today → queue → failed today). Skips the columns.
+  if(view==='all'){$('#main').innerHTML=glance+idleWarn+flatAllHTML(d);return;}
+  // TEAM COLUMNS (view: grouped)
+  const cols=TEAMS.map(t=>{const mine=t.agents.map(n=>byName[n]).filter(Boolean);
+    const run=mine.filter(isWorking).length;
+    // what the working agents are actually doing right now (agent — current step + ticket)
+    const workingNow=mine.filter(isWorking).map(function(a){var p=a.progress||{};var act=p.todoLine||p.doing||(a.lastMsg||'').slice(0,60)||'working…';return '<div class="mini" style="color:var(--run);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+esc(act)+'">▶ <b>'+esc(a.name)+'</b> — '+esc(act)+'</div>';}).join('');
+    const allPaused=mine.length>0&&mine.every(a=>a.state==='paused');
+    const tm=teamModel(t); const mc=MODEL_COL[tm.split('·')[0]]||'var(--mut)';
+    // team progress = average of its agents' progress (done=100). Only counts active/running agents.
+    const active=mine.filter(a=>a.state==='running'||a.state==='done'||(a.progress&&a.progress.done));
+    const tpct=active.length?Math.round(active.reduce((s,a)=>s+((a.state==='done'||(a.progress&&a.progress.done))?100:Math.min(100,(a.progress&&a.progress.pct)||0)),0)/active.length):0;
+    const tRun=(d.tempAgents||[]).filter(n=>t.agents.indexOf(n)>=0).length, nRun=Math.max(0,run-tRun); // temp over-cap split
+    const hdr='<div class="tcolh"><div style="display:flex;align-items:center;gap:6px"><span title="'+(run?run+' agent(s) working':'idle')+'" style="display:inline-block;width:9px;height:9px;border-radius:50%;flex:none;background:'+(run?'var(--ok)':'var(--mut)')+(run?';box-shadow:0 0 5px var(--ok)':'')+'"></span><b style="cursor:pointer" title="open team page (full control)" onclick="event.stopPropagation();openTeam('+JSON.stringify(t.name).replace(/"/g,'&quot;')+')">'+t.name+' ↗</b><span class="tagk" title="models this team&#39;s agents actually run on (per-job). An account set to &quot;use Sonnet&quot; overrides to Sonnet at run time." style="border-color:'+mc+';color:'+mc+'">'+esc(tm)+'</span><span style="flex:1"></span>'
+      +(run?'<span class="free" style="font-size:11px">'+nRun+(tRun?' <span style="color:#fbbf24;font-weight:700" title="temporary over-cap worker(s)">+'+tRun+'</span>':'')+' ▶ '+tpct+'%</span>':'<span class="mini" style="color:var(--mut)">idle</span>')+'</div>'
+      +(active.length?'<div class="pbar" style="margin:4px 0 0"><i style="width:'+tpct+'%;background:'+mc+'"></i></div>':'')
+      +'<div class="acts" style="margin-top:5px">'
+      +(allPaused?'<button class="btn p" style="font-size:10px;padding:3px 8px" onclick="event.stopPropagation();teamCtl('+JSON.stringify(t.agents).replace(/"/g,'&quot;')+',\'resume\')">▶ start team</button>'
+                 :'<button class="btn" style="font-size:10px;padding:3px 8px;color:var(--pause)" title="Pause team: let running agents finish, no new work" onclick="event.stopPropagation();teamCtl('+JSON.stringify(t.agents).replace(/"/g,'&quot;')+',\'pause\')">⏸ pause (finish)</button>'
+                 +'<button class="btn" style="font-size:10px;padding:3px 8px;color:var(--err)" title="Pause team FAST: stop new + kill its running agents now (safe — they resume next run)" onclick="event.stopPropagation();teamCtlFast('+JSON.stringify(t.agents).replace(/"/g,'&quot;')+')">⏸ fast</button>')+'</div></div>'; // close .acts AND .tcolh
+    const cards=mine.length?mine.map(teamCard).join(''):'<div class="mini" style="color:var(--mut)">— none</div>';
+    return '<div class="tcol">'+hdr
+      +(workingNow?'<div style="margin:5px 0;padding:5px 7px;background:rgba(56,189,248,.08);border:1px solid var(--line);border-radius:7px">'+workingNow+'</div>':'')
+      +teamTaskList(t)
+      +functionsSubteam(t)
+      +'<div style="margin-top:8px"><div class="mini" style="font-weight:700;color:#38bdf8;margin-bottom:3px" title="AI agents — use tokens">🤖 AI · uses tokens</div>'+cards+'</div>'
+      +'</div>';
+  }).join('');
+  // PER-TEAM run-queue strip (app/backend/firmware): dot = working, counts, pull + run — at the TOP of the list.
+  const teamStrip=(d.teams&&d.teams.length)?('<div class="glance" style="margin-top:-6px">'
+    +'<span class="gchip" style="opacity:.7">👥 teams:</span>'
+    +d.teams.map(function(t){return '<span class="gchip" title="'+t.team+' — '+t.queued+' queued, '+t.inProgress+' in-progress, '+t.todo+' to-do in backlog" style="display:inline-flex;align-items:center;gap:5px">'
+      +'<span style="display:inline-block;width:8px;height:8px;border-radius:50%;flex:none;background:'+(t.running?'var(--ok)':'var(--mut)')+(t.running?';box-shadow:0 0 5px var(--ok)':'')+'"></span>'
+      +'<b>'+t.team+'</b> <span style="color:var(--ok)">'+t.queued+'</span>q·'+t.inProgress+'p·'+t.todo+'td'
+      +' <button class="btn" style="font-size:10px;padding:2px 6px" title="Pull more backlog into this team\'s queue" onclick="api(\'/api/teampull\',{team:\''+t.team+'\'})">pull</button>'
+      +' <button class="btn p" style="font-size:10px;padding:2px 6px" title="Run this team now" onclick="api(\'/api/forcerun\',{name:\''+t.team+'\'})">run</button></span>';}).join('')
+    +'</div>'):'';
+  // Top shows only the attention bar + (when relevant) the idle reason. Account usage bars live on the
+  // Accounts tab; per-team queue/pull/run live on each team page — no clutter, no lost control.
+  $('#main').innerHTML=glance+idleWarn+'<div class="tcols">'+cols+'</div>';
+}
+// VIEW: ALL — flat, sorted list of TASKS in one place: ▶ Working (with progress bar + current step) →
+// ✓ Done today → ☐ In queue → ✗ Failed today. (Today = since 00:00, per the backend lists.)
+function flatAllHTML(d){
+  var tk=d.tickets||{}, ags=d.agents||[], todayOnly=(scope!=='all');
+  var isW=function(a){return a.state==='running'&&!(a.progress&&(a.progress.done||(a.progress.pct||0)>=100));};
+  // collapsible section header (click to collapse/expand)
+  var sec=function(id,title,color,n){var c=_collapsed[id];return '<h3 class="sec" style="font-size:13px;color:'+color+';margin:12px 0 5px;text-transform:none;cursor:pointer;user-select:none" onclick="toggleCollapse(\''+id+'\')">'+(c?'▸':'▾')+' '+title+' <span class="mini" style="color:var(--mut)">'+n+'</span></h3>';};
+  // a selectable task row (checkbox + key + summary + run); ticket rows in done/queue/failed
+  var tkrow=function(x,color,mark){var k=esc(x.key),seld=_sel.has(x.key);
+    return '<div class="tcard"><div class="tcr">'
+      +'<input type="checkbox" '+(seld?'checked':'')+' onclick="toggleSel(\''+k+'\',event)" title="select for bulk run" style="flex:none;margin-right:2px">'
+      +'<span class="tdot" style="background:'+color+'"></span>'
+      +'<b style="color:#fbbf24;cursor:pointer" onclick="openTicket(\''+k+'\')">'+k+'</b> '
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openTicket(\''+k+'\')">'+esc(x.summary||'')+'</span>'+(mark||'')
+      +'<button class="btn p" style="font-size:9px;padding:1px 6px;flex:none" title="activate + run this task" onclick="event.stopPropagation();_sel.add(\''+k+'\');runSelected(false)">▶</button></div></div>';};
+  var list=function(arr,id,fn){return arr.slice(0,_shown(id)).map(fn).join('')+moreBtn(id,arr.length);};
+  var body=function(id,arr,empty,fn){return _collapsed[id]?'':(arr.length?list(arr,id,fn):'<div class="empty" style="font-size:11px">'+empty+'</div>');};
+  // WORKING: live agents, each with a progress bar + the current step
+  var working=ags.filter(isW);
+  var wHTML=_collapsed['flat:w']?'':(working.slice(0,_shown('flat:w')).map(function(a){var p=a.progress||{},pct=smoothPct(a);
+    var tks=[...new Set((((p.doneLine||'')+' '+(p.todoLine||'')+' '+(p.doing||'')+' '+(p.did||[]).join(' ')+' '+(a.lastMsg||'')).match(/SCRUM-\d+/g))||[])];
+    var step=esc((p.doing||p.todoLine||p.doneLine||a.lastMsg||'working…')).slice(0,100);
+    return '<div class="tcard" onclick="openA(\''+a.name+'\')"><div class="tcr"><span class="tdot" style="background:var(--run)"></span><b>'+esc(a.name)+'</b>'
+      +(tks.length?' <span class="mini" style="color:#fbbf24;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+tks.slice(0,4).join(', ')+'</span>':'')
+      +'<span style="flex:1"></span><span class="mini" style="color:var(--run);font-weight:600">'+pct+'%</span></div>'
+      +'<div class="pbar" style="margin:4px 0 3px"><i style="width:'+pct+'%;background:var(--run)"></i></div>'
+      +'<div class="mini" style="color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">↻ '+step+'</div></div>';
+  }).join('')+moreBtn('flat:w',working.length))||'<div class="empty" style="font-size:11px">none working right now</div>';
+  var dt=todayOnly?(tk.doneToday||[]):(tk.done||[]), q=tk.queue||[], ft=todayOnly?(tk.failedToday||[]):(tk.failedAll||[]);
+  var dLbl=todayOnly?'Done today':'Done (all)', fLbl=todayOnly?'Failed today':'Failed (all open)';
+  // bulk-action bar when tasks are selected
+  var bulk=_sel.size?('<div class="glance" style="position:sticky;top:0;z-index:5;background:var(--panel);border:1px solid var(--acc);border-radius:9px;padding:7px 10px;margin-bottom:8px">'
+    +'<b style="color:var(--acc)">'+_sel.size+' selected</b>'
+    +'<button class="btn p" onclick="runSelected(false)">▶ run selected</button>'
+    +'<button class="btn" onclick="runSelected(true)">▶ batch selected</button>'
+    +'<button class="btn" onclick="clearSel()">✕ clear</button></div>'):'';
+  return '<div class="panel">'+bulk
+    +sec('flat:w','▶ Working now','var(--run)',working.length)+wHTML
+    +sec('flat:d','✓ '+dLbl,'#34d399',dt.length)+body('flat:d',dt,'none',function(x){return tkrow(x,'#34d399','<span class="mini" style="color:#34d399">✓</span>');})
+    +sec('flat:q','☐ In queue','#fbbf24',q.length)+body('flat:q',q,'empty',function(x){return tkrow(x,'var(--mut)','');})
+    +sec('flat:f','✗ '+fLbl,'#f87171',ft.length)+body('flat:f',ft,'none 🎉',function(x){return tkrow(x,'#f87171','<span class="mini" style="color:#f87171">✗</span>');})
+    +'</div>';
+}
+function renderDetail(name){
+  const a=(S.agents||[]).find(x=>x.name===name)||{};const p=a.progress||{},subs=p.subAgents||[];
+  const chk=s=>'<div class="card"><h3>'+esc(s.name||'sub-agent')+'<span style="flex:1"></span><span class="bdg s-running">'+((s.pct||0)>=100?'done':'working')+'</span></h3><div class="pbar"><i style="width:'+(s.pct||0)+'%"></i></div><div style="font-size:12.5px">'+(s.did||[]).map(x=>'<div class="lines"><div class="d">'+esc(x)+'</div></div>').join('')+(s.doing?'<div class="lines"><div class="t">'+esc(s.doing)+'</div></div>':'')+(s.todo||[]).map(x=>'<div class="lines" style="color:var(--mut)">☐ '+esc(x)+'</div>').join('')+'</div></div>';
+  const did=p.did||[], fail=p.fail||[], todo=p.todo||[], total=did.length+fail.length+todo.length;
+  // every ticket this agent is working on (extracted from all it reported) — clickable for full detail
+  const tks=[...new Set(([p.doneLine,p.todoLine,p.doing,did.join(' '),todo.join(' '),fail.join(' '),a.lastMsg].join(' ').match(/SCRUM-\d+/g))||[])];
+  const ticketsBlock=tks.length?('<div class="card"><h3>🎫 Tasks working here ('+tks.length+')</h3><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">'+tks.map(function(k){return '<span class="gchip" style="cursor:pointer;color:#fbbf24;border-color:#fbbf24" onclick="openTicket(\''+k+'\')">'+k+'</span>';}).join('')+'</div></div>'):'';
+  // BATCH breakdown: the per-ticket list this ONE agent is doing this run (state + step per ticket).
+  const bt=p.tasks||[];
+  const bdone=bt.filter(t=>t.state==='done').length,bfail=bt.filter(t=>t.state==='fail').length;
+  const ico={done:'✓',doing:'↻',fail:'✗',todo:'☐'},col={done:'var(--ok)',doing:'#fbbf24',fail:'var(--err)',todo:'var(--mut)'};
+  const batchBlock=bt.length?('<div class="card"'+(bfail?' style="border-color:var(--err)"':'')+'><h3>🎫 Batch — '+bt.length+' task'+(bt.length>1?'s':'')+' this run<span style="flex:1"></span><span class="mini" style="color:'+(bfail?'var(--err)':'var(--mut)')+'">'+bdone+'/'+bt.length+' done'+(bfail?' · '+bfail+' ✗':'')+'</span></h3>'
+    +'<div class="pbar" style="margin:6px 0"><i style="width:'+Math.round((bdone+bfail)/bt.length*100)+'%;background:'+(bfail?'var(--err)':'var(--ok)')+'"></i></div>'
+    +'<div style="font-size:13px;line-height:1.7">'+bt.map(function(t){var st=t.state||'todo';return '<div style="display:flex;gap:7px;align-items:baseline;padding:3px 0;border-bottom:1px solid #131d30;cursor:pointer" onclick="openTicket(\''+esc(t.key)+'\')"><span style="color:'+(col[st]||'var(--mut)')+';font-weight:700;flex:none">'+(ico[st]||'☐')+'</span><b style="color:#fbbf24;flex:none">'+esc(t.key)+'</b><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx)">'+esc(t.summary||'')+'</span>'+(t.step?'<span class="mini" style="color:var(--mut);flex:none">'+esc(t.step).slice(0,42)+'</span>':'')+'</div>';}).join('')+'</div></div>'):'';
+  // the agent's OWN checklist (✓ done / ✗ failed-or-error / → doing now / ☐ left) — the concrete steps
+  const checklist=(total||p.doneLine||p.todoLine)?('<div class="card"'+(fail.length?' style="border-color:var(--err)"':'')+'><h3>📋 Checklist'
+      +(total?'<span style="flex:1"></span><span class="mini" style="color:'+(fail.length?'var(--err)':'var(--mut)')+'">'+did.length+'/'+total+(fail.length?' · '+fail.length+' ✗':'')+'</span>':'')+'</h3>'
+      +'<div class="pbar"><i style="width:'+(p.pct||(total?Math.round((did.length+fail.length)/total*100):0))+'%;background:'+(fail.length?'var(--err)':'var(--run)')+'"></i></div>'
+      +'<div style="font-size:13px;line-height:1.75;margin-top:6px">'
+      +did.map(x=>'<div style="color:var(--ok)">✓ <span style="opacity:.85">'+esc(x)+'</span></div>').join('')
+      +fail.map(x=>'<div style="color:var(--err);font-weight:600">✗ '+esc(x)+'</div>').join('')
+      +(p.doing?'<div style="color:#fbbf24;font-weight:600">↻ '+esc(p.doing)+'</div>':'')
+      +(p.todoLine?'<div style="color:#38bdf8">→ '+esc(p.todoLine)+'</div>':'')
+      +todo.map(x=>'<div style="color:var(--mut)">☐ '+esc(x)+'</div>').join('')
+      +(!total&&p.doneLine?'<div style="color:var(--ok)">✓ '+esc(p.doneLine)+'</div>':'')
+      +'</div></div>'):'';
+  $('#main').innerHTML='<span class="back" onclick="goTab(tab)">← back</span>'
+    +'<h2 class="sec" style="font-size:16px;color:var(--tx);text-transform:none">'+esc(name)+' <span class="bdg '+sc(a.state)+'">'+(a.state||'')+'</span> <span class="tags">👥 '+subs.length+' in this room</span></h2>'
+    +(a.lastMsg&&!total&&!p.doneLine?'<div class="meta">'+esc(a.lastMsg).slice(0,160)+'</div>':'')
+    +'<div class="grid" style="margin-top:12px">'+(batchBlock||ticketsBlock)+checklist+(subs.length?subs.map(chk).join(''):((total||bt.length)?'':'<div class="empty">'+(a.lastMsg?'Current state: '+esc(a.lastMsg).slice(0,160)+'<br><br>':'')+'No live per-task detail yet — once this agent is actively working its batch it lists each ticket here (✓ done / ↻ doing / ☐ next / ✗ failed) with progress. A one-line status like “waiting for a free account” or “ran out of turns” just means that’s its current state right now.</div>'))+'</div>';
+}
+function fmtDT(s){if(!s)return'';const d=new Date(s);if(isNaN(d))return'';return d.toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}
+function taskTimes(i){let p=[];if(i.created)p.push('🆕 '+fmtDT(i.created));if(i.resolved)p.push('🏁 '+fmtDT(i.resolved));else if(i.updated)p.push('↻ '+fmtDT(i.updated));return p.length?'<div class="mini" style="color:var(--mut);margin:1px 0 0 2px">'+p.join(' · ')+'</div>':'';}
+// 🐞 marker: any ticket that's a bug/sentry/regression item gets a bug icon (hover = which bug).
+function bugInfo(key){return ((S.tickets&&S.tickets.bugs)||[]).find(b=>b.key===key);}
+function bugTag(key){const b=bugInfo(key);return b?'<span class="btag" title="🐞 BUG · '+esc(b.key+' — '+(b.summary||''))+'" style="cursor:help">🐞</span> ':'';}
+function trow(i,c){return '<div class="tline" style="display:block"><span style="cursor:pointer" onclick="openTicket(\''+i.key+'\')">'+bugTag(i.key)+'<b style="color:'+c+'">'+i.key+'</b> <span style="text-decoration:underline">'+esc(i.summary).slice(0,52)+'</span> ›</span>'+taskTimes(i)+'</div>';}
+function arow(i){return '<div class="tline" style="display:block"><div style="display:flex;justify-content:space-between;gap:8px"><span style="cursor:pointer;min-width:0" onclick="openTicket(\''+i.key+'\')"><b>'+i.key+'</b> <span style="text-decoration:underline">'+esc(i.summary).slice(0,46)+'</span></span><button class="btn p" onclick="api(\'/api/activate\',{key:\''+i.key+'\'})">▶ activate</button></div>'+taskTimes(i)+'</div>';}
+// selectable, startable task rows (start one / selected / all) + batch by group
+let selTasks=new Set(), startedKeys=new Set();
+function selRow(i,color){const ck=selTasks.has(i.key);
+  return '<div class="tline" style="display:block"><div style="display:flex;align-items:center;gap:8px"><input type="checkbox" '+(ck?'checked':'')+' onchange="toggleSelTask(\''+i.key+'\')"/>'
+    +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer" onclick="openTicket(\''+i.key+'\')">'+bugTag(i.key)+'<b style="color:'+color+'">'+i.key+'</b> '+esc(i.summary).slice(0,42)+'</span>'
+    +'<button class="btn p" onclick="startTasks([\''+i.key+'\'])">▶ start</button></div>'+taskTimes(i)+'</div>';}
+function startBar(keys){const sel=keys.filter(k=>selTasks.has(k));const allOn=sel.length===keys.length&&keys.length>0;
+  return '<div class="acts" style="margin:4px 0 8px;flex-wrap:wrap;align-items:center;gap:8px">'
+    +'<label class="mini" style="display:flex;gap:6px;align-items:center"><input type="checkbox" '+(allOn?'checked':'')+' onchange="selAll('+JSON.stringify(keys).replace(/"/g,'&quot;')+',this.checked)"/> select all</label>'
+    +'<button class="btn p" onclick=\'startTasks('+JSON.stringify(keys)+')\'>▶ Start all ('+keys.length+')</button>'
+    +(sel.length?'<button class="btn p" onclick=\'startTasks('+JSON.stringify(sel)+')\'>▶ Start selected ('+sel.length+')</button>':'')
+    +(sel.length?'<button class="btn" onclick="selTasks.clear();renderTasks()">clear</button>':'')+'</div>';}
+function toggleSelTask(k){selTasks.has(k)?selTasks.delete(k):selTasks.add(k);renderTasks();}
+function selAll(keys,on){keys.forEach(k=>on?selTasks.add(k):selTasks.delete(k));renderTasks();}
+function startTasks(keys){if(!keys||!keys.length)return;
+  if(keys.length>1&&!confirm('Start '+keys.length+' tasks? The fleet will pick them up.'))return;
+  keys.forEach(k=>{startedKeys.add(k);selTasks.delete(k);api('/api/activate',{key:k}).catch(()=>{});});
+  toast('▶ starting '+keys.length+' task'+(keys.length>1?'s':''));renderTasks();}
+function loadCi(){
+  fetch('/ci-status.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
+    if(j){ciStatus=j; updateCiBadge(); if(tab==='tasks'&&!detail)renderTasks();} // !detail: don't clobber an open sub-page (team/ticket/settings…)
+  }).catch(()=>{});
+}
+function loadFn(){
+  fetch('/fn-runs.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(j=>{
+    if(j){fnRuns=j; if(tab==='agents'&&!detail)renderAgents();} // !detail: don't repaint the main list over an open team page
+  }).catch(()=>{});
+}
+function updateCiBadge(){
+  var el=document.getElementById('cibadge'); if(!el)return;
+  if(!ciStatus){el.style.display='none';return;}
+  var f=(ciStatus.summary||{}).fail||0; el.style.display='';
+  if(f>0){el.textContent='🧪 '+f+' test'+(f>1?'s':'')+' failing';el.style.color='#fff';el.style.background='#7f1d1d';el.style.borderColor='#b91c1c';}
+  else{el.textContent='🧪 tests green';el.style.color='#34d399';el.style.background='';el.style.borderColor='';}
+}
+function ciPanelHTML(){
+  if(!ciStatus||!ciStatus.projects)return '';
+  var P=ciStatus.projects, names=Object.keys(P);
+  var ord={fail:0,timeout:1,skip:2,pass:3};   // failures first → "bring it to the top"
+  names.sort(function(a,b){var oa=ord[P[a].status],ob=ord[P[b].status];return ((oa==null?9:oa)-(ob==null?9:ob))||a.localeCompare(b);});
+  var sum=ciStatus.summary||{}, fail=sum.fail||0, tmo=sum.timeout||0;
+  var when=ciStatus.ran_at?(' · '+new Date(ciStatus.ran_at).toLocaleString()):'';
+  var head=fail>0?('❌ '+fail+' project'+(fail>1?'s':'')+' failing'):(tmo>0?'✅ no failures · ⏳ '+tmo+' timed out (Mac busy)':'✅ all green');
+  var rows=names.map(function(n){
+    var p=P[n]||{}, ic={pass:'✅',fail:'❌',skip:'⏭️',timeout:'⏳'}[p.status]||'•';
+    var col={pass:'#34d399',fail:'#f87171',skip:'var(--mut)',timeout:'#fbbf24'}[p.status]||'var(--mut)';
+    var det=p.status==='fail'?(' — failing: <b>'+esc(p.step||'?')+'</b>'+(p.jira?(' · <a href="https://yourcompany.atlassian.net/browse/'+esc(p.jira)+'" target="_blank" style="color:#f87171">'+esc(p.jira)+'</a>'):'')):'';
+    if(p.status==='timeout')det=' — ⏳ timed out at <b>'+esc(p.step||'?')+'</b> (Mac under load — not a code failure; will re-check)';
+    var sk=p.status==='skip'?(' <span class="mini" style="color:var(--mut)">('+esc(p.reason||'skipped')+')</span>'):'';
+    var cov=(p.coverage!=null)?(' <span class="mini" style="color:'+(p.coverage<50?'#f87171':(p.coverage<80?'#fbbf24':'#34d399'))+'">📊 '+p.coverage+'% cov</span>'):'';
+    return '<div class="tline" style="border-color:#18233a"><span style="color:'+col+';min-width:0">'+ic+' <b>'+esc(n)+'</b>'+det+sk+cov+'</span><span class="mini" style="color:var(--mut)">'+(p.secs!=null?p.secs+'s':'')+'</span></div>';
+  }).join('');
+  return '<div class="panel" style="border-color:'+(fail>0?'#5b1d1d':'var(--line)')+'">'
+    +'<h2>🧪 Automated tests <span class="mini" style="color:var(--mut);font-weight:400">zero-token CI'+when+'</span></h2>'
+    +'<div class="meta" style="flex-wrap:wrap"><span style="color:'+(fail>0?'#f87171':'#34d399')+';font-weight:700">'+head+'</span>'
+    +'<span style="color:#34d399">✅ '+(sum.pass||0)+'</span><span style="color:#f87171">❌ '+(sum.fail||0)+'</span>'+((sum.timeout||0)>0?'<span style="color:#fbbf24" title="timed out (Mac under load) — not a code failure">⏳ '+sum.timeout+'</span>':'')+'<span style="color:var(--mut)">⏭️ '+(sum.skip||0)+'</span>'
+    +'<span class="mini" style="color:var(--mut)">runs after every build/deploy + 2×/day · failures auto-file Highest-priority bugs</span></div>'
+    +rows+'</div>';
+}
+function renderTasks(){
+  const d=S,tk=d.tickets||{};
+  const tb=(v,l,n)=>'<button class="btn'+(taskView===v?' on':'')+'" onclick="setTaskView(\''+v+'\')">'+l+' '+n+'</button>';
+  let list;
+  const startable=(arr,color,emptyMsg)=>{const L=(arr||[]).filter(i=>!startedKeys.has(i.key));
+    return L.length?(startBar(L.map(i=>i.key))+L.map(i=>selRow(i,color)).join('')):'<div class="empty">'+emptyMsg+'</div>';};
+  if(taskView==='all'){
+    if(allTicketsCache===null){loadAllTickets();list='<div class="empty">loading all tickets…</div>';$('#main').innerHTML=ciPanelHTML()+'<div class="panel"><h2>🎫 Tickets</h2><div class="tk">'+tb('all','📋 All',tk.total||0)+tb('tree','🗂 Tasks','')+tb('queue','☐ Queue',tk.queueCnt||0)+tb('working','▶ Working',tk.workingCnt||0)+tb('bugs','🐞 Bugs',tk.bugsCnt||0)+tb('done','✓ Done',tk.doneCnt||0)+'</div>'+list+'</div>';return;}
+    let arr=(allTicketsCache||[]).slice();
+    arr.sort((a,b)=>new Date(b.updated||b.created||0)-new Date(a.updated||a.created||0)); // newest first
+    if(allFrom){const f=new Date(allFrom+'T00:00:00');arr=arr.filter(i=>new Date(i.updated||i.created||0)>=f);}
+    if(allTo){const t=new Date(allTo+'T23:59:59');arr=arr.filter(i=>new Date(i.updated||i.created||0)<=t);}
+    const more=(tk.total||0)>(allTicketsCache||[]).length?(' · newest '+(allTicketsCache||[]).length+' of '+tk.total):'';
+    const bar='<div class="sch" style="margin:6px 0;flex-wrap:wrap;align-items:center"><span class="mini">📅 from</span><input id="alF" type="date" value="'+allFrom+'" onchange="setAllFilter()"/>'
+      +'<span class="mini">to</span><input id="alT" type="date" value="'+allTo+'" onchange="setAllFilter()"/>'
+      +((allFrom||allTo)?'<button class="btn" onclick="clearAllFilter()">clear</button>':'')
+      +'<span class="mini" style="margin-left:auto">'+arr.length+' shown · newest first'+more+'</span></div>';
+    list=bar+(arr.length?arr.map(allRow).join(''):'<div class="empty">no tickets in that date range</div>');
+  }
+  else if(taskView==='tree')list=renderTree(tk.tree);
+  else if(taskView==='working')list=(tk.working||[]).map(i=>trow(i,'#38bdf8')).join('')||'<div class="empty">none working</div>';
+  else if(taskView==='review')list=(tk.inReview||[]).map(i=>trow(i,'#a78bfa')).join('')||'<div class="empty">nothing in review</div>';
+  else if(taskView==='epics')list=(tk.epics||[]).map(i=>trow(i,'#fbbf24')).join('')||'<div class="empty">no in-progress epics</div>';
+  else if(taskView==='cancelled')list=(tk.cancelled||[]).map(i=>trow(i,'var(--mut)')).join('')||'<div class="empty">none cancelled</div>';
+  else if(taskView==='done')list=(tk.done||[]).map(i=>trow(i,'#34d399')).join('')||'<div class="empty">none done yet</div>';
+  else if(taskView==='completed')list='<div class="mini" style="color:var(--mut);margin-bottom:6px">Fully shipped — coded → code &amp; security reviewed → tested → done. ('+(tk.completedCnt||0)+' total · '+(tk.completedTodayCnt||0)+' today)</div>'+((tk.completed||[]).map(i=>trow(i,'#10b981')).join('')||'<div class="empty">none completely done yet</div>');
+  else if(taskView==='bugs')list=startable(tk.bugs,'#f87171','no open bugs/errors 🎉'); // errors: start, no approval
+  else list=startable(tk.queue,'#fbbf24','queue empty');
+  // BREAKDOWN of the Jira "In Progress" category (so the 144 is explained on the page, not just the glance)
+  const inProgCat=(tk.workingCnt||0)+(tk.inReviewCnt||0)+(tk.epicCnt||0)+(tk.cancelledCnt||0);
+  const bd='<div class="meta" style="flex-wrap:wrap;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:2px 0 8px">'
+    +'<span title="everything Jira lumps into the In-Progress status category">🧮 In-Progress category <b>'+inProgCat+'</b> =</span>'
+    +'<span style="color:#38bdf8" title="real dev tickets actually being worked">🎫 '+(tk.workingCnt||0)+' in progress</span>'
+    +'<span style="color:#f87171">('+(tk.staleCnt||0)+' stale &gt;3d)</span>'
+    +'<span style="color:#a78bfa">👀 '+(tk.inReviewCnt||0)+' in review</span>'
+    +'<span style="color:#fbbf24;opacity:.85">📦 '+(tk.epicCnt||0)+' epics (containers)</span>'
+    +'<span style="color:var(--mut)">🚫 '+(tk.cancelledCnt||0)+' cancelled (workflow quirk)</span></div>';
+  $('#main').innerHTML=ciPanelHTML()+'<div class="panel"><h2>🎫 Tickets</h2>'
+    +'<div class="meta"><span>📋 <b style="color:var(--tx)">'+(tk.total||0)+'</b> total</span><span style="color:#38bdf8">▶ '+(tk.workingCnt||0)+' working</span><span style="color:#fbbf24">☐ '+(tk.queueCnt||0)+' queue</span>'
+      +'<span style="color:#34d399">✓ '+(tk.doneCnt||0)+' done <b title="resolved today (00:00→now)" style="color:#86efac">+'+(tk.doneTodayCnt||0)+' today</b></span>'
+      +'<span style="color:#10b981;cursor:pointer" onclick="setTaskView(\'completed\')" title="completely done — coded, reviewed, tested & shipped for good. Click to list them.">✅ '+(tk.completedCnt||0)+' completed <b style="color:#6ee7b7">+'+(tk.completedTodayCnt||0)+' today</b></span>'
+      +'<span style="color:#f87171">✗ <b title="failed/errored today — cancelled, test-failure, or sent back (changes-requested) since 00:00">'+(tk.failedTodayCnt||0)+' failed today</b></span>'
+      +'<span style="color:#f87171">🐞 '+(tk.bugsCnt||0)+' bugs</span></div>'
+    +bd
+    +'<div class="tk">'+tb('all','📋 All',tk.total||0)+tb('tree','🗂 Tasks','')+tb('queue','☐ Queue',tk.queueCnt||0)+tb('working','▶ Working',tk.workingCnt||0)+tb('review','👀 In review',tk.inReviewCnt||0)+tb('bugs','🐞 Bugs',tk.bugsCnt||0)+tb('epics','📦 Epics',tk.epicCnt||0)+tb('cancelled','🚫 Cancelled',tk.cancelledCnt||0)+tb('done','✓ Done',tk.doneCnt||0)+tb('completed','✅ Completed',tk.completedCnt||0)+'</div>'
+    +(taskView==='tree'?'<div class="empty">Main tasks with progress — tap one to open its sub-tasks; tap a sub-task for details.</div>':'')
+    +(taskView==='queue'?'<div class="empty">tap ▶ activate to start a ticket (the fleet picks it up)</div>':'')+list+'</div>'
+    +'<div class="panel"><h2>🔑 Token usage / account</h2>'+accountsHtml(d.accounts)+'</div>'
+    +'<div class="panel"><h2>🙋 Needs you / blockers</h2>'+((d.needsHuman||[]).length?(d.needsHuman||[]).map(i=>'<div class="rowi"><span><a href="'+i.url+'" target="_blank" style="color:#fca5a5">'+i.key+'</a> '+esc(i.summary).slice(0,40)+'</span><span class="mini">'+esc(i.status)+'</span></div>').join(''):'<div class="empty">nothing waiting 🎉</div>')+'</div>'
+    +'<div class="panel"><h2>💬 Chat / 🎤 voice command</h2><div class="chat"><div class="clog" id="clog"></div><div class="cin"><select id="cAgent">'+(d.agents||[]).filter(a=>a.kind==='agent').map(a=>'<option>'+a.name+'</option>').join('')+'</select><input id="cMsg" placeholder="type or speak…" onkeydown="if(event.key===\'Enter\')sendChat()"/><button class="btn mic" id="mic" onclick="voice()">🎤</button><button class="btn p" onclick="sendChat()">Send</button></div></div></div>';
+}
+function refreshDevices(){api('/api/devices/refresh');toast('🔄 rechecking devices…');}
+function agoStr(ts){if(!ts)return'';const s=Math.max(0,Math.floor(Date.now()/1000-ts));if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';return Math.floor(s/3600)+'h ago';}
+function devId(n){return 'dvr-'+(n||'').replace(/[^a-zA-Z0-9]/g,'');}
+function tryDevice(name){
+  const el=document.getElementById(devId(name));
+  if(el)el.innerHTML='<span class="mini">⏳ trying…</span>';
+  api('/api/devices/check',{name:name}).then(r=>r.json()).then(d=>{
+    if(el)el.innerHTML='<span class="mini" style="color:'+(d.ok?'var(--ok)':'var(--err)')+'">'+(d.ok?'✓ ':'✗ ')+esc(d.detail||'')+'</span>';
+  }).catch(()=>{if(el)el.innerHTML='<span class="mini" style="color:var(--err)">check failed</span>';});
+}
+let editDev=null; // device name being edited, '__new__' for add, or null
+function editDevice(n){editDev=n;renderDevices();}
+function addDevice(){editDev='__new__';renderDevices();}
+function cancelDevEdit(){editDev=null;renderDevices();}
+function dq(id){const e=document.getElementById(id);return e?e.value.trim():'';}
+function saveDevForm(){
+  const body={oldName:dq('df-old'),name:dq('df-name'),type:dq('df-type'),method:dq('df-method'),reach:dq('df-reach'),user:dq('df-user'),pass:dq('df-pass'),note:dq('df-note'),deployedVer:dq('df-ver'),deployedAt:dq('df-depat'),account:dq('df-account'),mode:dq('df-mode')};
+  if(!body.name){toast('name required',true);return;}
+  api('/api/devices/save',body).then(()=>{editDev=null;toast('✓ device saved');setTimeout(renderDevices,400);});
+}
+function delDevice(n){if(!confirm('Delete device "'+n+'"?'))return;api('/api/devices/delete',{name:n}).then(()=>{editDev=null;toast('device removed');setTimeout(renderDevices,400);});}
+function revealPass(n){api('/api/devices/reveal',{name:n}).then(r=>r.json()).then(d=>{const e=document.getElementById('df-pass');if(e){e.value=d.pass||'';e.type='text';}});}
+function devForm(x){
+  const m=x.connMethod||'';const methods=['auto','SSH','Network','USB serial','ADB','Cable / Wi-Fi'];
+  const isNew=!x.name;
+  return '<div class="panel" style="border:1px solid var(--acc)"><h3>'+(isNew?'➕ Add device':'✎ Edit '+esc(x.name))+'</h3>'
+    +'<input type="hidden" id="df-old" value="'+esc(x.name||'')+'"/>'
+    +'<div class="sch" style="flex-wrap:wrap;gap:8px">'
+    +'<label class="mini">name<br><input id="df-name" value="'+esc(x.name||'')+'" style="width:170px"/></label>'
+    +'<label class="mini">type<br><input id="df-type" value="'+esc(x.type||'')+'" placeholder="hub/pc/esp/ios…" style="width:120px"/></label>'
+    +'<label class="mini">connect via<br>'+selOpts('df-method',methods,(m&&methods.includes(m)?m:'auto'),{})+'</label>'
+    +'<label class="mini">IP / serial path<br><input id="df-reach" value="'+esc(x.reach||x.connAddress||'')+'" placeholder="192.168.1.100 or /dev/cu.usb…" style="width:200px"/></label>'
+    +'</div><div class="sch" style="flex-wrap:wrap;gap:8px;margin-top:8px">'
+    +'<label class="mini">username (SSH)<br><input id="df-user" value="'+esc(x.user||'')+'" placeholder="tadbir / claudworker" style="width:130px"/></label>'
+    +'<label class="mini">password<br><input id="df-pass" type="password" value="" placeholder="'+(x.hasPass?'•••• (unchanged)':'(none)')+'" style="width:150px"/></label>'
+    +(x.hasPass?'<button class="btn" style="align-self:flex-end" onclick="revealPass(\''+esc((x.name||'').replace(/\\/g,'').replace(/'/g,''))+'\')">👁 reveal</button>':'')
+    +'<label class="mini">note<br><input id="df-note" value="'+esc(x.note||'')+'" style="width:170px"/></label>'
+    +'<label class="mini">deployed version<br><input id="df-ver" value="'+esc(x.deployedVer||'')+'" placeholder="1.0.7 / fw-12" style="width:120px"/></label>'
+    +'<label class="mini">deployed date<br><input id="df-depat" type="date" value="'+esc(x.deployedAt||'')+'"/></label>'
+    +'<label class="mini" title="which account this device belongs to (some devices are for some accounts)">account<br><input id="df-account" list="df-accts" value="'+esc(x.account||'')+'" placeholder="account email / label" style="width:170px"/></label><datalist id="df-accts">'+((S.accounts||[]).map(a=>'<option value="'+esc(a.email||a.label)+'">').join(''))+'</datalist>'
+    +'<label class="mini" title="offline = local network / simulator only · online = reachable over the internet">mode<br>'+selOpts('df-mode',['online','offline'],(x.mode||'online'),{online:'online (internet)',offline:'offline (local/sim)'})+'</label>'
+    +'</div>'
+    +'<div class="acts" style="margin-top:10px"><button class="btn p" onclick="saveDevForm()">💾 Save</button><button class="btn" onclick="cancelDevEdit()">cancel</button>'
+    +(isNew?'':'<button class="btn" style="color:var(--pause)" onclick="delDevice(\''+esc((x.name||'').replace(/\\/g,'').replace(/'/g,''))+'\')">🗑 delete</button>')+'</div>'
+    +'<div class="mini" style="color:var(--mut);margin-top:6px">Tip: leave <b>connect via</b> on “auto” to detect from the address. Password is stored locally (mode 600, never committed) and used for a real SSH login test.</div></div>';
+}
+function renderDevices(){
+  const dv=S.devices||[];
+  const onCnt=dv.filter(x=>x.connected!==false).length;
+  const scanning=!!S.devScanning;
+  const hdr='<div class="meta" style="justify-content:space-between;align-items:center"><h2 style="margin:0">🔌 Devices</h2>'
+    +'<span><button class="btn" onclick="addDevice()">➕ Add device</button> <button class="btn p" onclick="refreshDevices()"'+(scanning?' disabled':'')+'>'+(scanning?'⏳ checking…':'🔄 Recheck all')+'</button></span></div>'
+    +'<div class="mini" style="margin:2px 0 8px">'+(scanning?'scanning USB · adb · iPhone · network pings…':('<b style="color:var(--ok)">'+onCnt+'</b> connected · '+dv.length+' known · auto-detected + manual'))+'</div>'
+    +'<div class="mini" style="margin:0 0 10px;color:var(--mut)">📱 Real iPhone tests run <b>02:00–08:00</b> only (connect the phone overnight). Everything else (sims, Android, hub, web, the device simulator) tests anytime.</div>';
+  // newest deployed version per device TYPE (so an out-of-date device of the same type stands out)
+  const latestByType={};dv.forEach(x=>{const t=x.type||'',v=x.deployedVer||'';if(v&&(!latestByType[t]||v>latestByType[t]))latestByType[t]=v;});
+  const rows=dv.map(x=>{const sim=x.kind==='sim',busy=x.inUse||x.busy,off=x.connected===false;
+    const by=x.usedBy||x.by;const safe=(x.name||'').replace(/\\/g,'').replace(/'/g,'');
+    const ver=x.deployedVer||'',latest=latestByType[x.type||''];
+    const outdated=ver&&latest&&ver!==latest;
+    const verHtml=ver?('<div class="mini" style="color:'+(outdated?'var(--orange)':'var(--ok)')+'" title="'+(outdated?'newer version '+esc(latest)+' deployed to another '+esc(x.type)+'':'on the latest')+'">⬆ v'+esc(ver)+(x.deployedAt?' · '+esc(x.deployedAt):'')+(outdated?' ⚠ update to '+esc(latest):'')+'</div>'):'';
+    const ago=x.checkedAt?(' <span class="mini" style="color:var(--mut)" title="auto-checked in the background">· '+agoStr(x.checkedAt)+'</span>'):'';
+    const status=(sim?'<span class="free">SIM</span>':(off?'<span class="off">● offline</span>':'<span class="free">● connected</span>')+(busy?(' · <span class="busy">in use'+(by?' '+esc(by):'')+'</span>'):''))+ago
+      +(x.checkDetail&&!sim?('<div class="mini" style="color:var(--mut);max-width:220px">'+esc(x.checkDetail)+'</div>'):'');
+    const addr=(x.connAddress||'—')+(x.hasPass?' <span class="tagk" title="password stored">🔑</span>':'')+(x.manual?'':' <span class="tagk" title="auto-detected">auto</span>');
+    return '<tr style="'+(off?'opacity:.55':'')+(outdated?';background:rgba(251,146,60,.08)':'')+'">'
+      +'<td><b>'+esc(x.name)+'</b><div class="mini" style="color:var(--mut)">'+(sim?'SIM':'REAL')+' · '+esc(x.type||'')+(x.note?' · '+esc(x.note):'')+'</div>'
+        +'<div class="mini" style="margin-top:1px">'+(x.account?'<span class="tagk" title="belongs to this account">👤 '+esc(x.account)+'</span> ':'')
+        +'<span class="tagk" title="'+((x.mode||'online')==='offline'?'local network / simulator only':'reachable over the internet')+'" style="border-color:'+((x.mode||'online')==='offline'?'var(--mut)':'var(--ok)')+';color:'+((x.mode||'online')==='offline'?'var(--mut)':'var(--ok)')+'">'+((x.mode||'online')==='offline'?'📴 offline':'🌐 online')+'</span></div>'+verHtml
+        +((!sim&&((x.type||'').toLowerCase()==='ios'||/iphone/i.test(x.name||'')))?'<div class="mini" style="color:var(--mut)" title="real iPhone is tested overnight only">📱 tested 02:00–08:00</div>':'')+'</td>'
+      +'<td><span class="tagk">'+esc(x.connMethod||'—')+'</span><div class="mini" style="color:var(--mut);max-width:150px">'+esc(x.connHow||'')+'</div></td>'
+      +'<td class="mono" style="font-size:10.5px;max-width:110px;word-break:break-all;white-space:normal">'+esc(addr)+'</td>'
+      +'<td>'+status+'</td>'
+      +'<td style="white-space:nowrap"><button class="btn p" onclick="tryDevice(\''+esc(safe)+'\')">🔌 Try</button> <button class="btn" onclick="editDevice(\''+esc(safe)+'\')">✎</button><div id="'+devId(x.name)+'" style="margin-top:3px"></div></td>'
+      +'</tr>';}).join('');
+  const table=dv.length?('<div style="overflow-x:auto"><table class="dtbl"><thead><tr><th>Device</th><th>Connect via</th><th>Address</th><th>Status</th><th>Check / edit</th></tr></thead><tbody>'+rows+'</tbody></table></div>'):'<div class="empty">no devices yet — tap ➕ Add device</div>';
+  let form='';
+  if(editDev==='__new__')form=devForm({});
+  else if(editDev)form=devForm(dv.find(d=>d.name===editDev)||{});
+  $('#main').innerHTML='<div class="panel">'+hdr+table+'</div>'+simPanel()+form+testAcctPanel();
+}
+// ---- Device Simulator (functional, no AI) — start/stop the dummy-device fleet on staging ----
+const SIM_ICON={extension:'🔌',temperature:'🌡️',camera:'📷',maincontroller:'🧠',hub:'🧠',flame:'🔥',flamedetector:'🔥',gas:'☣️',gasdetector:'☣️',smoke:'💨',smokedetector:'💨',curtain:'🪟',garage:'🚪',garagedoor:'🚪',window:'🪟',doorrail:'🚪',blind:'🪟'};
+function simPanel(){const s=S.simulator||{};const run=!!s.running;const dirty=!!s.dirty;const groups=s.groups||[];
+  const tsel=selOpts('simTrans',['signalr','mqtt','both'],s.transport||'signalr',{},'simTransport(this.value)');
+  return '<div class="panel" style="margin-top:14px"><div class="meta" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h2 style="margin:0">🧪 Device Simulator <span class="tagk" style="border-color:var(--ok);color:var(--ok)">functional · no AI · headless</span></h2>'
+    +'<span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+    +(run?'<span class="free">● running · '+(s.devices||0)+' devices · '+esc(s.env||'staging')+'</span><button class="btn" onclick="simCtl(\'stop\')">⏹ Stop</button>'
+         :'<span class="off">○ stopped · '+(s.devices||0)+' configured</span><button class="btn p" onclick="simCtl(\'start\')">▶ Start</button>')
+    +'<span class="mini">transport '+tsel+'</span></span></div>'
+    +(dirty?'<div class="gchip" style="border-color:var(--warn);color:var(--warn);margin:6px 0;display:inline-flex;gap:8px;align-items:center">⚠ device changes pending <button class="btn p" style="font-size:10px;padding:2px 8px" onclick="simCtl(\'apply\')">↻ Apply (restart + register)</button></div>':'')
+    +'<div class="mini" style="margin:4px 0;color:var(--mut)">The full device fleet on <b>staging</b> under the test account — no physical hardware, no separate website. Add/remove devices + groups below; <b>Apply</b> re-registers. Edits are instant + local; Apply makes one staging call (never a per-edit storm).</div>'
+    +simDevicesInline(s)
+    +'<div class="sch" style="margin-top:8px;flex-wrap:wrap;gap:6px;align-items:center"><b class="mini">➕ add device:</b>'
+      +'<input id="sd-grp" list="sd-grps" placeholder="group" style="width:110px"/><datalist id="sd-grps">'+groups.map(g=>'<option value="'+esc(g)+'">').join('')+'</datalist>'
+      +selOpts('sd-type',['temperature','extension','camera','hub','flamedetector','gasdetector','smokedetector','curtain','garagedoor','window','doorrail','blind'],'temperature',{})
+      +'<input id="sd-name" placeholder="name" style="width:130px"/>'
+      +'<input id="sd-sock" type="number" min="1" max="8" placeholder="sock" title="sockets (extension only)" style="width:64px"/>'
+      +'<button class="btn p" onclick="simAddDev()">add</button>'
+      +'<span style="flex:1"></span><input id="sg-name" placeholder="new group" style="width:110px"/><button class="btn" onclick="simAddGrp()">+ group</button></div>'
+    +(run?'<div class="mini" style="color:var(--ok);margin-top:6px">Test agents (e2e / qa / visual / random-tester) use these simulated devices — no real hardware needed.</div>':'')+'</div>';
+}
+// simulated devices, INLINE on the Devices page (no separate website) — with remove controls
+function simDevicesInline(s){const list=s.deviceList||[];const byG={};(s.groups||[]).forEach(g=>byG[g]=[]);list.forEach(d=>{(byG[d.group]=byG[d.group]||[]).push(d);});
+  const keys=Object.keys(byG);if(!keys.length)return '';
+  return '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:8px">'+keys.map(g=>
+    '<div style="flex:1 1 240px;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px"><div class="mini" style="color:var(--mut);font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:6px">📁 '+esc(g)+' · '+byG[g].length+'<span style="flex:1"></span><span onclick="simRmGrp(\''+esc(g)+'\')" title="remove group" style="cursor:pointer;color:var(--pause)">✕</span></div>'
+    +(byG[g].length?byG[g].map(d=>'<div style="display:flex;align-items:center;gap:6px;padding:2px 0;overflow:hidden"><span>'+(SIM_ICON[(d.type||'').toLowerCase()]||'📦')+'</span><b style="font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(d.name)+'</b>'+(d.sockets>1?'<span class="tagk">'+d.sockets+'×</span>':'')+'<span style="flex:1"></span><span title="'+(d.registered?'registered':'pending Apply')+'" style="color:'+(d.registered?'var(--ok)':'var(--mut)')+';font-size:11px">'+(d.registered?'●':'○')+'</span><span onclick="simRmDev(\''+esc(g)+'\',this.getAttribute(\'data-n\'))" data-n="'+esc(d.name)+'" title="remove" style="cursor:pointer;color:var(--pause);font-size:11px">✕</span></div>').join(''):'<div class="mini" style="color:var(--mut)">empty</div>')
+    +'</div>').join('')+'</div>';
+}
+function simCtl(act){api('/api/simulator/'+act,{}).then(r=>r.json()).then(d=>{if(d&&d.err)toast('simulator: '+d.err,false);else toast('simulator: '+act);setTimeout(renderDevices,(act==='start'||act==='apply')?2200:700);}).catch(()=>setTimeout(renderDevices,1000));}
+function simAddDev(){const g=dq('sd-grp'),t=dq('sd-type'),n=dq('sd-name'),sk=dq('sd-sock');if(!g||!n){toast('group + name needed',true);return;}
+  api('/api/simulator/device',{action:'add',group:g,type:t,name:n,sockets:sk}).then(r=>r.json()).then(d=>{if(d.err)toast(d.err,false);else toast('added '+n);renderDevices();});}
+function simRmDev(g,n){api('/api/simulator/device',{action:'remove',group:g,name:n}).then(()=>{toast('removed '+n);renderDevices();});}
+function simAddGrp(){const n=dq('sg-name');if(!n)return;api('/api/simulator/group',{action:'add',name:n}).then(()=>{toast('group '+n);renderDevices();});}
+function simRmGrp(n){if(!confirm('Remove group "'+n+'" and its devices?'))return;api('/api/simulator/group',{action:'remove',name:n}).then(()=>{toast('removed '+n);renderDevices();});}
+function simTransport(m){api('/api/simulator/transport',{mode:m}).then(()=>{toast('transport '+m+' (Apply to use)');renderDevices();});}
+// ---- Test login accounts — throwaway creds the test agents sign in with on the UI (never the real login) ----
+let tstAccts=null;
+function loadTestAccts(){api('/api/testaccount',{}).then(r=>r.json()).then(d=>{tstAccts=d.accounts||[];if(tab==='devices')renderDevices();}).catch(()=>{tstAccts=[];});}
+function testAcctPanel(){
+  if(tstAccts===null){loadTestAccts();return '<div class="panel" style="margin-top:14px"><h2 style="margin:0 0 6px">🧪 Test login accounts</h2><div class="empty">loading…</div></div>';}
+  const rows=tstAccts.map(a=>'<tr><td><b>#'+esc(a.slot)+'</b></td>'
+    +'<td><input id="ta-em-'+esc(a.slot)+'" value="'+esc(a.email)+'" placeholder="test@example.com" style="width:200px"/></td>'
+    +'<td style="white-space:nowrap"><input id="ta-pw-'+esc(a.slot)+'" type="password" placeholder="'+(a.hasPass?'•••••• (set — leave blank to keep)':'set password')+'" style="width:160px"/> <button class="btn" onclick="revealTestAcct(\''+esc(a.slot)+'\')" title="reveal">👁</button></td>'
+    +'<td><input id="ta-be-'+esc(a.slot)+'" value="'+esc(a.backend||'staging')+'" placeholder="staging" style="width:80px"/></td>'
+    +'<td><button class="btn p" onclick="saveTestAcct(\''+esc(a.slot)+'\')">save</button></td></tr>').join('');
+  return '<div class="panel" style="margin-top:14px"><div class="meta" style="justify-content:space-between;align-items:center"><h2 style="margin:0">🧪 Test login accounts</h2><button class="btn" onclick="addTestAcct()">➕ Add</button></div>'
+    +'<div class="mini" style="margin:3px 0 9px;color:var(--mut)">Throwaway accounts the test agents (e2e / qa / device) sign in with on the UI — <b>like a real human</b>. NEVER your real login. The agent reads the <b>exact</b> password stored here, so it stops typing it wrong on retries.</div>'
+    +'<div style="overflow-x:auto"><table class="dtbl"><thead><tr><th>Slot</th><th>Email</th><th>Password</th><th>Backend</th><th></th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" class="empty">none yet — tap ➕ Add</td></tr>')+'</tbody></table></div></div>';
+}
+function addTestAcct(){const n=(prompt('New test-account slot number (e.g. 3):')||'').trim();if(!n)return;if(!tstAccts)tstAccts=[];if(tstAccts.some(a=>a.slot===n)){toast('slot exists');return;}tstAccts.push({slot:n,email:'',hasPass:false,backend:'staging'});renderDevices();}
+function saveTestAcct(slot){const em=($('#ta-em-'+slot)||{}).value||'',pw=($('#ta-pw-'+slot)||{}).value||'',be=($('#ta-be-'+slot)||{}).value||'';
+  api('/api/testaccount/save',{slot:slot,email:em,password:pw,backend:be}).then(r=>r.json()).then(d=>{tstAccts=d.accounts||[];toast('test account saved');renderDevices();});}
+function revealTestAcct(slot){api('/api/testaccount/reveal',{slot:slot}).then(r=>r.json()).then(d=>{const el=$('#ta-pw-'+slot);if(el){el.type='text';el.value=d.password||'';}});}
+// ---- Multimedia (marketing) tab — content queue + per-item approval ----
+let mmOpen=null; // open item id (full view) or null
+let mmSite=false; // when true, the Media tab shows the full marketing.example.com site embedded (one website)
+function mmAct(id,action){api('/api/mm/action',{id:id,action:action}).then(()=>{if(action==='cancel'||action==='publish')mmOpen=null;toast('media: '+action+(id==='all'?' all':''));setTimeout(renderMultimedia,400);});}
+function mmAuto(on){api('/api/mm/autoapprove',{on:on?'true':'false'}).then(()=>setTimeout(renderMultimedia,300));}
+function mmBadge(s){const c={pending:'var(--warn)',approved:'var(--run)',published:'var(--ok)',cancelled:'var(--mut)'}[s]||'var(--mut)';return '<span class="bdg" style="background:'+c+'">'+s+'</span>';}
+function mmImg(p){if(!p)return '';return '<img src="/media?p='+encodeURIComponent(p)+'" style="max-width:100%;max-height:320px;border-radius:10px;border:1px solid var(--line)" onerror="this.style.display=\'none\'"/>';}
+function renderMultimedia(){
+  const q=S.multimedia||[],auto=!!S.mmAutoApprove,mk=marketingPanel();
+  // EMBEDDED MARKETING SITE — marketing.example.com lives inside the dashboard (one website)
+  if(mmSite){
+    $('#main').innerHTML='<div class="meta" style="justify-content:space-between;align-items:center;margin-bottom:8px"><span class="back" onclick="mmSite=false;renderMultimedia()">← back to content queue</span>'
+      +'<a class="btn" href="https://marketing.example.com/" target="_blank" rel="noopener">↗ open in new tab</a></div>'
+      +'<iframe src="https://marketing.example.com/login" title="Marketing site" style="width:100%;height:83vh;border:1px solid var(--line);border-radius:12px;background:#fff"></iframe>';
+    return;
+  }
+  if(mmOpen){const it=q.find(x=>x.id===mmOpen)||{};
+    $('#main').innerHTML='<span class="back" onclick="mmOpen=null;renderMultimedia()">← back to list</span>'
+      +'<div class="panel"><div class="meta" style="justify-content:space-between"><h2 style="margin:0">'+esc(it.title||it.type||'content')+'</h2>'+mmBadge(it.status)+'</div>'
+      +'<div class="mini" style="color:var(--mut);margin:4px 0">'+esc(it.type||'')+(it.channel?' · '+esc(it.channel):'')+' · '+esc(it.createdAt||'')+'</div>'
+      +(it.image?'<div style="margin:8px 0">'+mmImg(it.image)+'</div>':'')
+      +(it.video?'<div style="margin:8px 0"><video src="/media?p='+encodeURIComponent(it.video)+'" controls style="max-width:100%;border-radius:10px"></video></div>':'')
+      +'<div style="white-space:pre-wrap;font-size:14px;line-height:1.6;margin-top:8px">'+esc(it.text||'')+'</div>'
+      +'<div class="acts" style="margin-top:12px">'
+      +(it.status==='pending'?'<button class="btn p" onclick="mmAct(\''+esc(it.id)+'\',\'approve\')">✓ approve</button><button class="btn" style="color:var(--pause)" onclick="mmAct(\''+esc(it.id)+'\',\'cancel\')">✗ cancel</button>':'')
+      +(it.status==='approved'?'<button class="btn p" onclick="mmAct(\''+esc(it.id)+'\',\'publish\')">🚀 publish</button><button class="btn" style="color:var(--pause)" onclick="mmAct(\''+esc(it.id)+'\',\'cancel\')">✗ cancel</button>':'')
+      +'</div></div>';return;
+  }
+  const pending=q.filter(i=>i.status==='pending');
+  const hdr='<div class="meta" style="justify-content:space-between;align-items:center"><h2 style="margin:0">📣 Multimedia — content queue</h2>'
+    +'<span class="mini" style="display:flex;gap:8px;align-items:center"><button class="btn p" onclick="mmSite=true;renderMultimedia()" title="open the full marketing.example.com site inside the dashboard">🌐 Marketing site</button><label class="mini"><input type="checkbox" '+(auto?'checked':'')+' onchange="mmAuto(this.checked)"/> auto-approve all</label>'
+    +(pending.length>1?'<button class="btn p" onclick="mmAct(\'all\',\'approve\')">✓ approve all ('+pending.length+')</button>':'')+'</span></div>'
+    +'<div class="mini" style="color:var(--mut);margin:2px 0 10px">The agent drafts content (reusing the screenshot gallery + brand voice) only when nothing\'s pending. Review each, or auto-approve. Click one to see its post + image/video.</div>';
+  const rows=q.length?q.map(i=>'<div class="rowi" style="cursor:pointer" onclick="mmOpen=\''+esc(i.id)+'\';renderMultimedia()">'
+      +'<span style="display:flex;gap:8px;align-items:center;min-width:0">'+(i.image?'<img src="/media?p='+encodeURIComponent(i.image)+'" style="width:38px;height:38px;object-fit:cover;border-radius:7px" onerror="this.style.display=\'none\'"/>':'📄')+'<span style="min-width:0"><b>'+esc(i.title||i.type||'content')+'</b><div class="mini" style="color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:48vw">'+esc((i.text||'').slice(0,80))+'</div></span></span>'
+      +'<span style="display:flex;gap:6px;align-items:center;white-space:nowrap">'+mmBadge(i.status)
+      +(i.status==='pending'?'<button class="btn p" onclick="event.stopPropagation();mmAct(\''+esc(i.id)+'\',\'approve\')">✓</button>':'')
+      +(i.status==='approved'?'<button class="btn p" onclick="event.stopPropagation();mmAct(\''+esc(i.id)+'\',\'publish\')">🚀</button>':'')
+      +'</span></div>').join(''):'<div class="empty">no content yet — the Multimedia agent drafts one every ~4h (when nothing\'s pending). Resume an account to let it run.</div>';
+  $('#main').innerHTML='<div class="panel">'+hdr+rows+'</div>'+mk;
+}
+// Mac usage / warning level control: how hard the fleet may push THIS computer. Higher = more usage =
+// higher warning threshold before new runs are held. Max = full capacity (won't hang — disk + runaway
+// protection stay on). "allow more usage" = the + button.
+function usageLevelPanel(){
+  // hold the just-clicked level for ~5s so a stale SSE frame can't flip it back (the "reverts to 3" bug).
+  var lvl=(_resLvlVal!=null&&(Date.now()-_resLvlAt<5000))?_resLvlVal:(S.resourceLevel||2);
+  var name=(_resLvlVal!=null&&(Date.now()-_resLvlAt<5000))?_resLvlName:(S.resourceLevelName||'Balanced');
+  var desc={1:'Light — holds new runs at memory ≥ 60% (or CPU load > 3× cores). Gentlest.',
+            2:'Balanced — holds at memory ≥ 75% (or CPU load > 4× cores).',
+            3:'High — holds at memory ≥ 88% (or CPU load > 6× cores). Uses more of the Mac.',
+            4:'MAX / full capacity — only holds at memory ≥ 99%; NO CPU-load limit, so it uses the whole Mac. (Disk floor + runaway-process backstop still on, so it can’t hang.)'}[lvl];
+  var col=lvl>=4?'#f87171':lvl===3?'#fbbf24':'#34d399';
+  return '<div class="panel"><h2>⚙️ Mac usage level — how hard the fleet may push this computer</h2>'
+    +'<div class="rowi"><span>Current level</span><span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+      +'<button class="btn" title="use LESS of the Mac (warn/hold sooner)" onclick="setResLevel(-1)"'+(lvl<=1?' disabled':'')+'>– less</button>'
+      +'<b style="color:'+col+'">'+lvl+'/4 · '+esc(name)+'</b>'
+      +'<button class="btn" title="allow MORE usage (warn/hold later)" onclick="setResLevel(1)"'+(lvl>=4?' disabled':'')+'>more +</button>'
+      +'</span></div>'
+    +'<div class="mini" style="color:var(--mut);margin-top:7px">'+esc(desc)+'</div>'
+    +'<div class="mini" style="color:var(--mut);margin-top:4px">Low-disk safety + runaway-process protection stay ON at every level — even Max can’t hang the Mac.</div>'
+    +'</div>';
+}
+function renderServers(){
+  const sv=S.servers||[],se=S.sentry||[],sy=S.system||{};
+  $('#main').innerHTML='<div class="panel"><h2>💻 This machine (runs the fleet)</h2>'
+    +'<div class="rowi"><span>Disk free</span><span class="'+((sy.diskFreeGB||0)<25?"busy":"free")+'">'+(sy.diskFreeGB||0)+' / '+(sy.diskTotalGB||0)+' GB</span></div>'
+    +'<div class="rowi"><span>Memory used</span><span class="'+((sy.memUsedPct||0)>90?"busy":"free")+'">'+(sy.memUsedPct||0)+'%</span></div>'
+    +'<div class="rowi"><span>Load (1m)</span><span>'+(sy.load||"—")+'</span></div></div>'
+    +usageLevelPanel()
+    +'<div class="panel"><h2>🖥️ Servers / VPS</h2>'+(sv.length?sv.map(s=>'<div class="rowi"><span>'+esc(s.name)+'</span><span class="'+(s.up?'free':'off')+'">'+(s.up?'up · '+s.ms+'ms':'DOWN')+'</span></div>').join(''):'<div class="empty">no targets</div>')+'</div>'
+    +deploymentsPanel()
+    +marketingPanel()
+    +'<div class="panel"><h2>🪵 Sentry — per project</h2>'+(se.length?se.map(p=>'<div class="rowi"><span>'+esc(p.name)+'</span><span><span class="off">'+p.unresolved+(p.capped?'+':'')+' to solve</span> · <span class="free">'+p.resolved+' solved</span></span></div>').join(''):'<div class="empty">no Sentry data yet (refreshes ~10m)</div>')+'</div>';
+}
+function deploymentsPanel(){const ds=S.deployments||[];
+  if(!ds.length)return '';
+  const rows=ds.map(s=>{const live=S.servers&&S.servers.find(x=>x.url===s.url);
+    const health=s.url?(live?(live.up?'<span class="free">● up</span>':'<span class="off">● down</span>'):''):'';
+    return '<div class="rowi"><span>'+esc(s.name)+(s.branch&&s.branch!=='development'&&s.branch!=='main'&&s.branch!=='master'?' <span class="tagk">'+esc(s.branch)+'</span>':'')+'</span>'
+      +'<span style="text-align:right"><b style="color:var(--ok)">'+esc(s.version||'?')+'</b> '+health+'<div class="mini" style="color:var(--mut)">'+(s.date?'updated '+esc(s.date):'—')+(s.commit?' · '+esc(s.commit):'')+'</div></span></div>';}).join('');
+  return '<div class="panel"><h2>🚀 Deployments — services & versions</h2>'
+    +'<div class="mini" style="color:var(--mut);margin-bottom:6px">Latest version + last change of every service (from each repo). Live URLs show up/down.</div>'+rows+'</div>';
+}
+// ---- Chat with Tgo (the main full-access agent, like Claude in VS Code) ----
+let tgoLog=[]; // {who:'me'|'tgo', body, streaming}
+function sendMain(msg){msg=(msg||'').trim();if(!msg)return; // NO lock — chat while it answers the previous one
+  const history=tgoLog.slice(-12).map(m=>(m.who==='me'?'You: ':'Tgo: ')+m.body).join('\n');
+  tgoLog.push({who:'me',body:msg});
+  const idx=tgoLog.push({who:'tgo',body:'',streaming:true})-1;
+  if(detail==='__chat__')renderChat();
+  const sr=$('#sideChatReply');if(sr)sr.textContent='Tgo is typing…';
+  fetch('/api/chat/stream',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg,history:history})})
+   .then(resp=>{if(!resp.body)throw 0;const rd=resp.body.getReader(),dec=new TextDecoder();let buf='';
+     (function pump(){rd.read().then(({done,value})=>{
+       if(done){tgoLog[idx].streaming=false;liveStream(idx);return;}
+       buf+=dec.decode(value,{stream:true});const ps=buf.split('\n\n');buf=ps.pop();
+       ps.forEach(p=>{const j=p.indexOf('data: ');if(j>=0){const raw=p.slice(j+6);if(raw==='[DONE]'){tgoLog[idx].streaming=false;}else{try{tgoLog[idx].body+=JSON.parse(raw);}catch(_){}}}});
+       liveStream(idx);pump();
+     }).catch(()=>{tgoLog[idx].streaming=false;if(!tgoLog[idx].body)tgoLog[idx].body='⚠ stream dropped — press Send again';liveStream(idx);});})();
+   }).catch(()=>{tgoLog[idx].streaming=false;tgoLog[idx].body=tgoLog[idx].body||'⚠ couldn\'t reach Tgo — press Send again';liveStream(idx);});
+}
+// update JUST the streaming message element (smooth typing; no full re-render, keeps your input focused)
+function liveStream(idx){const el=$('#tgomsg-'+idx);const m=tgoLog[idx];
+  if(el){if(m.streaming){el.style.whiteSpace='pre-wrap';el.textContent=(m.body||'')+' ▌';}
+         else{el.style.whiteSpace='';el.innerHTML=(m.who==='tgo'?mdRender(m.body):esc(m.body||''));} // finished → render as markdown
+         const c=$('#tgoClog');if(c)c.scrollTop=1e9;}
+  else if(detail==='__chat__')renderChat();
+  const s=$('#sideChatReply');if(s)s.textContent='Tgo: '+(((tgoLog[idx].body||'').slice(-150))||'…');}
+function chatVoice(btnId,inId){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('Voice needs Safari or Chrome.');return;}
+  const b=$('#'+btnId);const rec=new SR();rec.lang=(localStorage.getItem('cw_voicelang')||'en-US');rec.interimResults=false;if(b)b.classList.add('rec');
+  rec.onresult=e=>{const txt=e.results[0][0].transcript;const m=$('#'+inId);if(m){m.value=(m.value?m.value+' ':'')+txt;m.focus();}};
+  rec.onerror=()=>{if(b)b.classList.remove('rec');};rec.onend=()=>{if(b)b.classList.remove('rec');};
+  try{rec.start();}catch(_){}}
+function setVoiceLang(l){localStorage.setItem('cw_voicelang',l);renderChat();}
+function renderChat(){
+  const log=tgoLog.map((m,i)=>{const isMe=m.who==='me';
+    const body=(isMe||m.streaming)?('<span style="white-space:pre-wrap">'+esc(m.body)+(m.streaming?' ▌':'')+'</span>'):mdRender(m.body); // finished Tgo replies render as markdown
+    return '<div class="m '+(isMe?'me':'ag')+'"><span class="who">'+(isMe?'you':'🤖 Tgo')+'</span><span class="body" id="tgomsg-'+i+'">'+body+'</span></div>';
+   }).join('')||'<div class="empty">Ask Tgo anything — it runs on your Mac with full access (like Claude in VS Code) and can do real work, spawn agents, manage the fleet, or just answer. It streams its reply + remembers this conversation, and you can keep typing while it works.</div>';
+  const vl=localStorage.getItem('cw_voicelang')||'en-US';
+  $('#main').innerHTML='<span class="back" onclick="goTab(tab)">← back</span>'
+    +'<div class="panel" style="display:flex;flex-direction:column;height:74vh"><div class="meta" style="justify-content:space-between;align-items:center"><h2 style="margin:0">💬 Chat with Tgo — your main agent</h2>'
+      +'<span class="mini" style="display:flex;gap:6px;align-items:center">🎤 '+selOpts('tgoVlang',['en-US','fa-IR'],vl,{'en-US':'English','fa-IR':'فارسی'},'setVoiceLang(this.value)')+'<button class="btn" onclick="location.href=\'/speak.html\'" title="full voice page">🎙 Speak</button><button class="btn" onclick="tgoLog=[];renderChat()">🗑 clear</button></span></div>'
+    +'<div class="clog" id="tgoClog" style="flex:1">'+log+'</div>'
+    +'<div class="cin" style="margin-top:8px;display:flex;gap:6px;align-items:flex-end">'
+      +'<textarea id="tgoMsg" placeholder="ask Tgo anything…  (Enter = send · Shift+Enter = new line · 🎤 to speak)" style="flex:1;min-height:46px;max-height:160px;resize:vertical;font:inherit;padding:9px" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();var v=this.value;this.value=\'\';sendMain(v);}"></textarea>'
+      +'<button class="btn mic" id="tgoMic" onclick="chatVoice(\'tgoMic\',\'tgoMsg\')" title="speak">🎤</button>'
+      +'<button class="btn p" onclick="(function(){var e=document.getElementById(\'tgoMsg\');var v=e.value;e.value=\'\';sendMain(v);})()">Send</button></div></div>';
+  const c=$('#tgoClog');if(c)c.scrollTop=1e9;
+}
+function marketingCtl(action){toast('marketing: '+action+'…');api('/api/marketing/control',{action:action}).then(r=>r.json()).then(d=>toast('marketing: '+(d.result||'done')));}
+function marketingPanel(){const m=S.marketing||{};
+  const on=m.running;const st=m.ok?(on?'<span class="free">● running</span>':'<span class="off">● stopped</span>')+(m.state?' <span class="mini" style="color:var(--mut)">'+esc(m.state)+'</span>':''):'<span class="mini" style="color:var(--mut)">status unavailable (VPS unreachable)</span>';
+  return '<div class="panel"><h2>📣 Marketing service <span class="tagk" style="color:var(--mut)">retired</span></h2>'
+    +'<div class="mini" style="color:var(--mut);margin-bottom:6px">Retired — content now lives in the <b>📣 Media tab</b> here. The old VPS Docker engine is stopped (not deleted); <b>Start</b> re-enables it only if you need its channel-publishing while that\'s migrated in.</div>'
+    +'<div class="rowi"><span>marketing-agent</span><span>'+st+'</span></div>'
+    +'<div class="acts" style="margin-top:8px">'
+    +'<button class="btn p" onclick="marketingCtl(\'start\')"'+(on?' disabled':'')+'>▶ Start</button>'
+    +'<button class="btn" style="color:var(--pause)" onclick="marketingCtl(\'stop\')"'+(on?'':' disabled')+'>⏹ Stop</button>'
+    +'<button class="btn" onclick="marketingCtl(\'restart\')">🔄 Restart</button>'
+    +'<a class="btn" href="https://marketing.example.com" target="_blank">open ↗</a></div></div>';
+}
+function accountsHtml(ac){ac=(ac||[]).slice().sort((x,y)=>(x.engine==='codex'?1:0)-(y.engine==='codex'?1:0));return (ac&&ac.length?ac.map(a=>{
+  // lead with the CURRENT SESSION (active 5h window, like /usage), weekly after
+  const hr=(a.hour!=null&&a.hour>=0)?a.hour:-1, wk=(a.week!=null&&a.week>=0)?a.week:a.pct,k=hr>=0||wk>=0;
+  const colh=hr<0?'#36486a':usageColor(hr,100), colw=(wk<0)?'#36486a':usageColor(wk,a.cap);
+  const det=k?('session '+(hr>=0?hr:0)+'% · wk '+(wk>=0?wk:0)+'%'+(a.hourReset>=0?(' · ↻'+fmtMin(liveReset(a.label+'h',a.hourReset))):'')):esc(a.note||'n/a');
+  const bars=k?('<div class="mini" style="display:flex;align-items:center;gap:4px;margin-top:3px"><span style="width:36px;color:var(--mut)">5h</span><span class="gb" style="flex:1"><i style="width:'+(hr>=0?Math.min(100,hr):0)+'%;background:'+colh+'"></i></span><span style="width:28px;text-align:right">'+(hr>=0?hr:0)+'%</span></div>'
+    +'<div class="mini" style="display:flex;align-items:center;gap:4px"><span style="width:36px;color:var(--mut)">week</span><span class="gb" style="flex:1"><i style="width:'+(wk>=0?Math.min(100,wk):0)+'%;background:'+colw+'"></i></span><span style="width:28px;text-align:right">'+(wk>=0?wk:0)+'%</span></div>'):'';
+  const lid=a.label.replace(/'/g,'');const nm=a.email||a.label;const run=a.running||0;
+  const pstate=a.paused?(run>0?' <span style="color:var(--pause)">pausing ('+run+' finishing)</span>':' <span style="color:var(--pause)">paused</span>'):(run>0?' <span class="free">'+run+' working</span>':'');
+  return '<div style="margin:8px 0;'+(a.paused?'opacity:.55':'')+'"><div class="meta" style="justify-content:space-between"><span>'+esc(nm)+' <span class="tagk">'+esc(a.engine)+'</span>'+pstate+'</span><span class="mini">'+det+'</span></div>'+bars+'<div class="acts">'+(a.paused?'<button class="btn" onclick="api(\'/api/acctpause\',{label:\''+lid+'\',on:\'false\'})">▶ resume</button>':'<button class="btn p" onclick="api(\'/api/acctpause\',{label:\''+lid+'\',on:\'true\'})">⏸ pause</button>')+'</div></div>';}).join(''):'<div class="empty">no accounts</div>');}
+function renderAside(){
+  const d=S,tk=d.tickets||{},sv=d.servers||[],dv=d.devices||[],se=d.sentry||[];
+  const up=sv.filter(s=>s.up).length,conn=dv.filter(x=>x.connected!==false).length;
+  const sU=se.reduce((a,p)=>a+(p.unresolved||0),0),sR=se.reduce((a,p)=>a+(p.resolved||0),0);
+  const go=t=>' style="cursor:pointer" onclick="goTab(\''+t+'\')"';
+  const apprCnt=(tk.approval||[]).filter(i=>!approvedKeys.has(i.key)).length;
+  const orq=(d.ownerRequests||[]).length;
+  $('#aside').innerHTML='<div class="panel" style="cursor:pointer'+(orq?';border:1px solid var(--warn)':'')+'" onclick="openV(\'__needs__\')"><h2>🙋 Needs you ›</h2><div class="mini">'+(orq?'<span style="color:var(--warn)">🔑 <b>'+orq+'</b> access</span> · ':'')+'✅ <b>'+apprCnt+'</b> approve · 🔌 <b>'+((tk.hwWait||[]).length)+'</b> hardware · 🧪 <b>'+((tk.humanTest||[]).length)+'</b> human-test</div></div>'
+    +'<div class="panel" style="cursor:pointer" onclick="openV(\'__accounts__\')"><h2>🔑 Accounts (Claude + Codex) — settings ›</h2>'+accountsHtml(d.accounts)+'</div>'
+    +'<div class="panel"'+go('tasks')+'><h2>🎫 Tickets ›</h2><div class="mini">▶ <b>'+(tk.workingCnt||0)+'</b> working · ☐ <b>'+(tk.queueCnt||0)+'</b> queue · ✓ <b>'+(tk.doneCnt||0)+'</b> done · <span class="off">🐞 '+(tk.bugsCnt||0)+'</span> bugs</div></div>'
+    +'<div class="panel"'+go('servers')+'><h2>🪵 Sentry ›</h2>'+(se.length?se.map(p=>'<div class="rowi"><span>'+esc(p.name)+'</span><span><span class="off">'+p.unresolved+(p.capped?'+':'')+'</span>/<span class="free">'+p.resolved+'</span></span></div>').join(''):'<div class="empty">—</div>')+'<div class="mini" style="margin-top:6px"><b>'+sU+'</b> to solve · <b>'+sR+'</b> solved</div></div>'
+    +'<div class="panel"'+go('servers')+'><h2>🖥️ Servers ›</h2><div class="mini"><b>'+up+'</b> up · <b>'+(sv.length-up)+'</b> down</div></div>'
+    +'<div class="panel"'+go('devices')+'><h2>🔌 Devices ›</h2><div class="mini"><b>'+conn+'</b> connected · '+(dv.length-conn)+' offline</div></div>'
+    +'<div class="panel"><h2 style="cursor:pointer" onclick="openV(\'__chat__\')">💬 Chat with Tgo ›</h2>'
+      +'<div class="mini" style="color:var(--mut);margin-bottom:6px">Ask the main agent anything (like Claude in VS Code) — it can do it.</div>'
+      +'<div style="display:flex;gap:6px"><input id="sideChat" placeholder="ask Tgo to do anything…" style="flex:1;min-width:0" onkeydown="if(event.key===\'Enter\'){sendMain(this.value);this.value=\'\';}"/><button class="btn p" onclick="(function(){var e=document.getElementById(\'sideChat\');sendMain(e.value);e.value=\'\';})()">Send</button></div>'
+      +'<div id="sideChatReply" class="mini" style="margin-top:6px;color:var(--mut)"></div></div>';
+}
+function renderSettings(){
+  $('#main').innerHTML='<span class="back" onclick="goTab(tab)">← back</span>'
+    +'<div class="panel" id="voicePanel"><h2>🎙️ Tgo voice assistant</h2><div class="empty">loading…</div></div>'
+    +'<div class="panel"><h2>Change password</h2><input class="fin" id="cu" placeholder="username"/><input class="fin" id="co" type="password" placeholder="current password"/><input class="fin" id="cnw" type="password" placeholder="new password"/><button class="btn p" onclick="chPass()">change password</button></div>'
+    +'<div class="panel"><h2>Add / set user</h2><input class="fin" id="au" placeholder="username"/><input class="fin" id="ap" type="password" placeholder="password"/><button class="btn p" onclick="addU()">add user</button><div id="ul" class="empty" style="margin-top:8px"></div></div>';
+  fetch('/api/users/list',{credentials:'include'}).then(r=>r.json()).then(d=>{$('#ul').textContent='users: '+((d.users||[]).join(', ')||'—');}).catch(()=>{});
+  loadVoice();
+}
+function loadVoice(){fetch('/api/voicecfg',{credentials:'include'}).then(r=>r.json()).then(renderVoice).catch(()=>{});}
+function renderVoice(v){
+  const p=$('#voicePanel');if(!p)return;
+  const sel=(id,opts,cur)=>'<select id="'+id+'">'+opts.map(o=>'<option value="'+o[0]+'"'+(o[0]===cur?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>';
+  p.innerHTML='<h2>🎙️ Tgo voice assistant '+(v.enabled?'<span class="free">● ON'+(v.running?' · listening':''):'<span class="off">● OFF')+'</span></h2>'
+    +'<div class="empty">Say your wake word ("Hey Tgo") and talk to Tgo — your local assistant that knows the whole dashboard. 100% local + your Azure keys; nobody sharing your Claude account can hear it. Off most of the time.</div>'
+    +(v.azureReady?'':'<div class="mini" style="color:var(--pause)">⚠ Azure Speech key missing — STT/TTS will not work.</div>')
+    +'<div class="acts" style="margin-top:8px"><button class="btn'+(v.enabled?' p':'')+'" onclick="api(\'/api/voicecfg\',{enabled:\''+(v.enabled?'false':'true')+'\'}).then(()=>setTimeout(loadVoice,500))">'+(v.enabled?'⏹ turn OFF':'▶ turn ON')+'</button></div>'
+    +'<div class="sch" style="margin-top:12px;flex-wrap:wrap"><span class="mini">language</span>'+sel('v-lang',[['both','English + فارسی'],['en','English'],['fa','فارسی']],v.language)
+    +'<span class="mini">voice</span>'+sel('v-gender',[['female','woman'],['male','man']],v.voiceGender)
+    +'<span class="mini">STT</span>'+sel('v-stt',[['azure','Azure'],['google','Google'],['local','Local']],v.sttEngine)
+    +'<span class="mini">TTS</span>'+sel('v-tts',[['azure','Azure'],['google','Google'],['local','Local']],v.ttsEngine)+'</div>'
+    +'<div style="margin-top:10px"><div class="mini">local assistant active hours (e.g. 17:30-01:00 — comma for several; default 5:30pm→1am)</div><input id="v-win" class="fin" value="'+esc((v.activeWindows||[{from:"17:30",to:"01:00"}]).map(function(w){return w.from+"-"+w.to}).join(", "))+'"/></div>'
+    +'<div style="margin-top:6px"><div class="mini">wake words (one per line — several allowed; "Hey Tgo" default)</div><textarea id="v-wake" class="fin" style="height:54px">'+esc((v.wakeWords||[]).join('\n'))+'</textarea></div>'
+    +'<div><div class="mini">assistant names (one per line — "Tgo Agent" / "Tgo Main Agent")</div><textarea id="v-names" class="fin" style="height:48px">'+esc((v.agentNames||[]).join('\n'))+'</textarea></div>'
+    +'<button class="btn p" onclick="saveVoice()">save voice settings</button>';
+}
+function saveVoice(){api('/api/voicecfg',{language:$('#v-lang').value,voiceGender:$('#v-gender').value,sttEngine:$('#v-stt').value,ttsEngine:$('#v-tts').value,activeWindows:$('#v-win').value,wakeWords:$('#v-wake').value,agentNames:$('#v-names').value}).then(()=>setTimeout(loadVoice,400));}
+function chPass(){api('/api/users/changepass',{user:$('#cu').value,old:$('#co').value,new:$('#cnw').value}).then(r=>r.json()).then(d=>alert(d.ok?'Password changed ✓':'Wrong username or current password'));}
+function addU(){if(!$('#au').value||!$('#ap').value)return;api('/api/users/add',{user:$('#au').value,pass:$('#ap').value}).then(()=>{renderSettings();});}
+function renderHistory(){
+  $('#main').innerHTML='<span class="back" onclick="goTab(tab)">← back</span><h2 class="sec" style="font-size:16px;color:var(--tx);text-transform:none">Last 24h — agents &amp; tasks</h2><div id="hist" class="empty">loading…</div>';
+  fetch('/api/history',{credentials:'include'}).then(r=>r.json()).then(d=>{const h=d.history||[];
+    $('#hist').innerHTML=h.length?'<div class="panel">'+h.map(x=>'<div class="rowi"><span>'+(x.time||'').slice(11,16)+' · <b style="color:var(--tx)">'+esc(x.name)+'</b> <span class="tagk">'+esc(x.runner||'')+'</span></span><span class="'+(x.ok?'free':'off')+'">'+(x.ok?'done':'retry')+(x.cost?' · $'+x.cost.toFixed(3):'')+'</span></div>').join('')+'</div>':'<div class="empty">no runs in the last 24h yet</div>';}).catch(()=>{$('#hist').textContent='—';});
+}
+
+/* ---------- chat + voice ---------- */
+function addMsg(cls,who,body){const e=document.createElement('div');e.className='m '+cls;e.innerHTML='<span class="who">'+esc(who)+'</span><span class="body">'+esc(body)+'</span>';$('#clog').appendChild(e);$('#clog').scrollTop=1e9;}
+async function sendChat(){const a=$('#cAgent').value,m=($('#cMsg').value||'').trim();if(!m)return;addMsg('me','you → '+a,m);$('#cMsg').value='';addMsg('ag',a,'…thinking');
+  const r=await api('/api/chat',{agent:a,message:m}).then(r=>r.json()).catch(()=>({reply:'(failed)'}));$('#clog').lastChild.querySelector('.body').textContent=r.reply||'(no reply)';}
+let rec=null;
+function voice(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('Voice needs Safari/Chrome.');return;}
+  if(rec){rec.stop();rec=null;$('#mic').classList.remove('rec');return;}
+  rec=new SR();rec.interimResults=false;$('#mic').classList.add('rec');
+  rec.onresult=e=>{$('#cMsg').value=e.results[0][0].transcript;rec=null;$('#mic').classList.remove('rec');sendChat();};
+  rec.onerror=()=>{rec=null;$('#mic').classList.remove('rec');};rec.onend=()=>{$('#mic').classList.remove('rec');};
+  rec.start();
+}
+boot();
+</script>
+</body>
+</html>

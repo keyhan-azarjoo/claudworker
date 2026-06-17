@@ -1,0 +1,44 @@
+# Secrets — NEVER commit
+*.secrets.json
+.secrets.json
+secrets.json
+/secrets.json
+config.json
+users.json
+*.token
+*.pem
+*.key
+
+# Build output
+claudworker
+master/claudworker
+*.exe
+
+# Logs & runtime
+logs/
+*.log
+/tmp/claudworker.*
+
+# Worktrees created by workers
+.worktrees/
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+sentry_snapshot.json
+history.jsonl
+
+# durable account state (token copies) — never commit
+state/
+web/ci-status.json
+logs/ci-status.json
+logs/ci-cron.log
+logs/ci-filed.json
+logs/ci-tests.lock
+web/fn-runs.json
+
+# Python cache
+__pycache__/
+*.pyc

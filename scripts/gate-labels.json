@@ -1,0 +1,18 @@
+{
+  "_comment": "CANONICAL merge-gate label lists — the SINGLE source of truth (PROJ-123 / PROJ-123). Read by merge-gate.sh, merge-queue.sh (bash) AND release.py (Python) so the two merge tools can never disagree on what 'mergeable' means. Edit ONLY here.",
+  "required": [
+    "code-approved",
+    "security-approved"
+  ],
+  "blocking": [
+    "merge-blocked",
+    "changes-requested",
+    "needs-human",
+    "blocked",
+    "do-not-merge",
+    "do-not-deploy",
+    "wait-for-human-test",
+    "wait-for-hardware-test",
+    "held"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "_readme": "Copy this to config.json (the master auto-copies it on first run). Connect Jira/Confluence/Sentry/GitHub/Telegram and your backend URLs from the dashboard: Accounts → Connect your accounts. Secrets live in the gitignored secrets.json — never here.",
+  "secretsPath": "secrets.json",
+  "projectDir": "..",
+  "model": "claude-opus-4-8",
+  "fallbackModel": "claude-sonnet-4-6",
+  "maxConcurrent": 5,
+  "boost": true,
+  "fanout": 3,
+  "usagePausePct": 99,
+  "usageResumePct": 95,
+  "pauseFile": "/tmp/claudworker.off",
+  "logDir": "./logs",
+  "privacyRoleFile": "./prompts/privacy_role.md",
+  "jobTimeoutMinutes": 120,
+  "minFreeGB": 25,
+  "_accounts": "Each runner is an AI CLI login profile. Set pace/effort/cap PER ACCOUNT on the dashboard. Log each Claude profile in once: CLAUDE_CONFIG_DIR=<dir> claude /login. Codex/Gemini: pick 'other' and give the run command (gets the task in $WORKER_PROMPT).",
+  "accounts": [
+    { "label": "claude-1", "engine": "claude", "configDir": "" }
+  ],
+  "_comment": "kind=agent are team roles; kind=job are granular tasks. Schedule with everyMinutes OR atHHMM; manual=true runs only on -run. The prompt files under agents/ and jobs/ are EXAMPLES — edit them to describe YOUR project, conventions and gates.",
+  "jobs": {
+    "inbox": { "kind": "agent", "promptFile": "agents/inbox_telegram.md", "everyMinutes": 20, "allowedTools": "Read,Bash,WebFetch,Write", "maxTurns": 20 },
+    "planner": { "kind": "agent", "promptFile": "agents/planner.md", "atHHMM": "00:30", "allowedTools": "Read,Grep,Glob,Bash,WebFetch,WebSearch,Write", "maxTurns": 80 },
+    "code-review": { "kind": "agent", "promptFile": "agents/code_reviewer.md", "manual": true, "allowedTools": "Read,Grep,Glob,Bash", "maxTurns": 60 },
+    "security-review": { "kind": "agent", "promptFile": "agents/security_reviewer.md", "manual": true, "allowedTools": "Read,Grep,Glob,Bash", "maxTurns": 60 },
+    "reliability": { "kind": "agent", "promptFile": "agents/reliability_sentry.md", "everyMinutes": 120, "allowedTools": "Read,Bash,WebFetch", "maxTurns": 30 },
+    "qa": { "kind": "agent", "promptFile": "agents/qa_test_engineer.md", "atHHMM": "01:00", "allowedTools": "Read,Write,Bash", "maxTurns": 120 },
+    "jira-poll": { "kind": "job", "promptFile": "jobs/jira_poll.md", "everyMinutes": 120, "allowedTools": "Read,Edit,Write,Bash", "maxTurns": 60 },
+    "sentry-catch": { "kind": "job", "promptFile": "jobs/sentry_catch.md", "manual": true, "allowedTools": "Read,Bash,WebFetch", "maxTurns": 25 }
+  },
+  "pace": "medium",
+  "schedulerMins": 30,
+  "_monitor": "Your backend / servers to health-check. Edit here or from Accounts → Connect → 'Backend / services to watch'.",
+  "monitor": [
+    { "name": "my backend (prod)", "url": "https://api.example.com" },
+    { "name": "my backend (staging)", "url": "https://staging.api.example.com" }
+  ]
+}
